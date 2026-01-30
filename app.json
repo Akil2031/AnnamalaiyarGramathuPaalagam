@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "milk-subscription-simple",
+    "slug": "milk-subscription-simple",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/agp.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/cover.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.milksubscriptionsimple"
+    },
+    "web": {
+      "favicon": "./assets/agp.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "60983ebd-a1ac-4722-b8c5-a74469e8f727"
+      }
+    },
+    "owner": "annamalaiyargramathupalagam",
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
