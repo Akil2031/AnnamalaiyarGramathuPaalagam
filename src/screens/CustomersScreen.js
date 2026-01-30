@@ -24,6 +24,7 @@ import {
 export default function Customer() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc"); // asc | desc
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -102,11 +103,20 @@ export default function Customer() {
     ]);
   };
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.mobile.includes(search)
-  );
+  /* 🔍 SEARCH + 🔼🔽 SORT */
+  const filteredCustomers = [...customers]
+    .filter(
+      (c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.mobile.includes(search)
+    )
+    .sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      return sortOrder === "asc"
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName);
+    });
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
@@ -130,9 +140,7 @@ export default function Customer() {
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => toggleStatus(item)}>
           <Text style={styles.link}>
-            {item.status === "active"
-              ? "Deactivate"
-              : "Activate"}
+            {item.status === "active" ? "Deactivate" : "Activate"}
           </Text>
         </TouchableOpacity>
 
@@ -148,9 +156,7 @@ export default function Customer() {
           <Text style={styles.link}>Edit</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => confirmDelete(item.id)}
-        >
+        <TouchableOpacity onPress={() => confirmDelete(item.id)}>
           <Text style={styles.delete}>Delete</Text>
         </TouchableOpacity>
       </View>
@@ -169,12 +175,38 @@ export default function Customer() {
         </Text>
       </View>
 
-      <TextInput
-        style={styles.search}
-        placeholder="🔍 Search customers"
-        value={search}
-        onChangeText={setSearch}
-      />
+      {/* COUNT + SORT */}
+      <View style={styles.listHeader}>
+        <Text style={styles.countText}>
+          Total Customers: {filteredCustomers.length}
+        </Text>
+
+        <TouchableOpacity
+          onPress={() =>
+            setSortOrder((p) => (p === "asc" ? "desc" : "asc"))
+          }
+        >
+          <Text style={styles.sortText}>
+            Sort: {sortOrder === "asc" ? "A → Z" : "Z → A"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* SEARCH */}
+      <View style={styles.searchWrapper}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="🔍 Search customers"
+          value={search}
+          onChangeText={setSearch}
+        />
+
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch("")}>
+            <Text style={styles.clearBtn}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <FlatList
         data={filteredCustomers}
@@ -191,7 +223,7 @@ export default function Customer() {
         <Text style={styles.fabText}>＋</Text>
       </TouchableOpacity>
 
-      {/* 🌈 MODAL (BOTTOM SHEET) */}
+      {/* MODAL */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.bottomSheet}>
@@ -262,13 +294,28 @@ const styles = StyleSheet.create({
   },
   headerSub: { color: "#E8F5E9", marginTop: 4 },
 
-  search: {
+  listHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 12,
+  },
+
+  countText: { fontWeight: "700", color: "#1F2937" },
+  sortText: { fontWeight: "700", color: "#2563EB" },
+
+  searchWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#fff",
     margin: 16,
-    padding: 14,
+    paddingHorizontal: 16,
     borderRadius: 25,
     elevation: 2,
   },
+
+  searchInput: { flex: 1, paddingVertical: 14 },
+  clearBtn: { fontSize: 18, color: "#64748B", paddingLeft: 8 },
 
   card: {
     backgroundColor: "#fff",

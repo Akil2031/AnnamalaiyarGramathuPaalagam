@@ -87,17 +87,23 @@ export default function CalendarScreen() {
   /* 📅 BUILD CALENDAR */
   const daysInMonth = getDaysInMonth(year, month);
 
-  const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    const date = getDateKey(year, month, day);
+  // ONLY the important changed part shown
 
-    return {
-      day,
-      date,
-      delivered: deliveries.some(d => d.date === date),
-      disabled: isFuture(date),
-    };
-  });
+const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
+  const day = i + 1;
+  const date = getDateKey(year, month, day);
+
+  const missed = deliveries.some((d) => d.date === date);
+
+  return {
+    day,
+    date,
+    delivered: !missed,
+    missed,
+    disabled: isFuture(date),
+  };
+});
+
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -167,13 +173,14 @@ export default function CalendarScreen() {
             renderItem={({ item }) => (
               <View
                 style={[
-                  styles.dayBox,
-                  item.delivered ? styles.delivered : styles.skipped,
-                  item.disabled && styles.disabled,
+                styles.dayBox,
+                item.missed ? styles.skipped : styles.delivered,
+                item.disabled && styles.disabled,
                 ]}
-              >
-                <Text style={styles.dayText}>{item.day}</Text>
-              </View>
+  >
+  <Text style={styles.dayText}>{item.day}</Text>
+</View>
+
             )}
           />
         </>

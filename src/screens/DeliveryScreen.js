@@ -9,6 +9,8 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
+import ScreenWrapper from "../components/ScreenWrapper";
+
 
 import { db } from "../firebase/firebase";
 import {
@@ -19,6 +21,8 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  getDocs,
+  updateDoc,
 } from "firebase/firestore";
 
 /* ---------- HELPERS ---------- */
@@ -50,7 +54,7 @@ const monthFromDate = (dateStr) => dateStr.slice(0, 7);
 export default function DailyDeliveryScreen() {
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [subscriptions, setSubscriptions] = useState([]);
-  const [deliveries, setDeliveries] = useState([]);
+  const [missedDeliveries, setMissedDeliveries] = useState([]);
   const [search, setSearch] = useState("");
 
   const monthKey = monthFromDate(selectedDate);
@@ -69,7 +73,7 @@ export default function DailyDeliveryScreen() {
     });
   }, [monthKey]);
 
-  /* 🔹 LOAD MISSED DELIVERIES ONLY */
+  /* 🔹 LOAD MISSED DELIVERIES FOR DAY */
   useEffect(() => {
     const q = query(
       collection(db, "deliveries"),
@@ -78,11 +82,81 @@ export default function DailyDeliveryScreen() {
     );
 
     return onSnapshot(q, (snap) => {
-      setDeliveries(
+      setMissedDeliveries(
         snap.docs.map((d) => ({ id: d.id, ...d.data() }))
       );
     });
   }, [selectedDate]);
+
+  /* 🔁 RECALC SUBSCRIPTION */
+  const recalcSubscription = async (customerId) => {
+    const subSnap = await getDocs(
+      query(
+        collection(db, "subscriptions"),
+        where("customerId", "==", customerId),
+        where("month", "==", monthKey)
+      )
+    );
+
+    for (const d of subSnap.docs) {
+      const sub = { id: d.id, ...d.data() };
+
+      const missedSnap = await getDocs(
+        query(
+          collection(db, "deliveries"),
+          where("customerId", "==", customerId),
+          where("status", "==", "missed"),
+          where("date", ">=", `${monthKey}-01`),
+          where("date", "<=", `${monthKey}-31`)
+        )
+      );
+
+      const missedDays = missedSnap.size;
+      const deliveredDays = Math.max(
+        sub.plannedDays - missedDays,
+        0
+      );
+
+      const dayAmount =
+        sub.quantityPerDay * sub.pricePerLitre;
+
+      const totalPlannedAmount =
+        sub.plannedDays * dayAmount;
+
+      const actualAmount =
+        deliveredDays * dayAmount;
+
+      await updateDoc(doc(db, "subscriptions", sub.id), {
+        deliveredDays,
+        skippedDays: missedDays,
+        actualAmount,
+        carryForwardAmount:
+          totalPlannedAmount - actualAmount,
+      });
+    }
+  };
+
+  /* 🔁 TOGGLE DELIVERY */
+  const toggleDelivery = async (customerId) => {
+    const docId = `${customerId}_${selectedDate}`;
+
+    const isMissed = missedDeliveries.some(
+      (d) => d.customerId === customerId
+    );
+
+    if (isMissed) {
+      await deleteDoc(doc(db, "deliveries", docId));
+    } else {
+      await setDoc(doc(db, "deliveries", docId), {
+        customerId,
+        date: selectedDate,
+        status: "missed",
+        createdAt: Date.now(),
+      });
+    }
+
+    await recalcSubscription(customerId);
+  };
 
   /* 🔍 SEARCH */
   const filteredSubscriptions = useMemo(() => {
@@ -93,32 +167,10 @@ export default function DailyDeliveryScreen() {
     );
   }, [search, subscriptions]);
 
-  /* 🔁 TOGGLE DELIVERY (MISSED ONLY) */
-  const toggleDelivery = async (customerId) => {
-    const docId = `${customerId}_${selectedDate}`;
-
-    const missed = deliveries.some(
-      (d) => d.customerId === customerId
-    );
-
-    if (missed) {
-      // 🔄 Back to DELIVERED (remove missed record)
-      await deleteDoc(doc(db, "deliveries", docId));
-    } else {
-      // ❌ MISSED delivery
-      await setDoc(doc(db, "deliveries", docId), {
-        customerId,
-        date: selectedDate,
-        status: "missed",
-        createdAt: Date.now(),
-      });
-    }
-  };
-
   /* ---------- RENDER ---------- */
 
   const renderItem = ({ item }) => {
-    const missed = deliveries.some(
+    const missed = missedDeliveries.some(
       (d) => d.customerId === item.customerId
     );
 
@@ -160,10 +212,7 @@ export default function DailyDeliveryScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#2E7D32" barStyle="light-content" />
-
-      {/* 🌈 HEADER */}
+  <ScreenWrapper>
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() =>
@@ -195,7 +244,6 @@ export default function DailyDeliveryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* SEARCH */}
       <TextInput
         style={styles.search}
         placeholder="🔍 Search customer"
@@ -203,34 +251,24 @@ export default function DailyDeliveryScreen() {
         onChangeText={setSearch}
       />
 
-      <Text style={styles.hint}>
-        Toggle OFF only if delivery was missed
-      </Text>
-
       <FlatList
         data={filteredSubscriptions}
         keyExtractor={(i) => i.customerId}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
       />
-    </View>
+    </ScreenWrapper>
   );
 }
 
 /* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F1F8E9",
-  },
+  container: { flex: 1, backgroundColor: "#F1F8E9" },
 
-  /* HEADER */
   topHeader: {
     backgroundColor: "#2E7D32",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -244,66 +282,35 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  nav: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
+  nav: { color: "#fff", fontSize: 18 },
+  navDisabled: { opacity: 0.4 },
 
-  navDisabled: {
-    opacity: 0.4,
-  },
-
-  /* SEARCH */
   search: {
     backgroundColor: "#fff",
     margin: 16,
     padding: 14,
     borderRadius: 12,
-    elevation: 2,
   },
 
-  hint: {
-    color: "#64748B",
-    marginHorizontal: 16,
-    marginBottom: 10,
-  },
-
-  /* CARDS */
   card: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
     marginBottom: 10,
     padding: 14,
     borderRadius: 14,
-    elevation: 2,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderLeftWidth: 4,
   },
 
-  deliveredCard: {
-    borderLeftColor: "#2E7D32",
-  },
+  deliveredCard: { borderLeftColor: "#2E7D32" },
+  missedCard: { borderLeftColor: "#DC2626" },
 
-  missedCard: {
-    borderLeftColor: "#DC2626",
-  },
+  name: { fontSize: 16, fontWeight: "600" },
+  meta: { color: "#64748B", marginTop: 2 },
 
-  name: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  meta: {
-    color: "#64748B",
-    marginTop: 2,
-  },
-
-  switchWrap: {
-    alignItems: "flex-end",
-  },
+  switchWrap: { alignItems: "flex-end" },
 
   statusText: {
     fontSize: 12,
@@ -311,11 +318,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  deliveredText: {
-    color: "#2E7D32",
-  },
-
-  missedText: {
-    color: "#DC2626",
-  },
+  deliveredText: { color: "#2E7D32" },
+  missedText: { color: "#DC2626" },
 });
