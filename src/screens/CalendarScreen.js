@@ -7,9 +7,10 @@ import {
   StyleSheet,
   Modal,
   TextInput,
-  StatusBar,
   Dimensions,
 } from "react-native";
+
+import ScreenWrapper from "../components/ScreenWrapper";
 
 import { db } from "../firebase/firebase";
 import {
@@ -23,7 +24,7 @@ import {
 
 const today = new Date();
 const { width } = Dimensions.get("window");
-const CELL_SIZE = (width - 32 - 6 * 6) / 7; // perfect 7 columns
+const CELL_SIZE = (width - 32 - 6 * 6) / 7;
 
 const formatMonth = (y, m) =>
   `${y}-${String(m).padStart(2, "0")}`;
@@ -51,7 +52,6 @@ export default function CalendarScreen() {
 
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-
   const [deliveries, setDeliveries] = useState([]);
 
   const [customerModal, setCustomerModal] = useState(false);
@@ -61,14 +61,14 @@ export default function CalendarScreen() {
 
   /* 🔹 LOAD CUSTOMERS */
   useEffect(() => {
-    return onSnapshot(collection(db, "customers"), snap => {
+    return onSnapshot(collection(db, "customers"), (snap) => {
       setCustomers(
-        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
       );
     });
   }, []);
 
-  /* 🔹 LOAD DELIVERIES */
+  /* 🔹 LOAD DELIVERIES (MISSED ONLY MODEL) */
   useEffect(() => {
     if (!selectedCustomer) return;
 
@@ -79,48 +79,49 @@ export default function CalendarScreen() {
       where("date", "<=", `${monthKey}-31`)
     );
 
-    return onSnapshot(q, snap => {
-      setDeliveries(snap.docs.map(d => d.data()));
+    return onSnapshot(q, (snap) => {
+      setDeliveries(
+        snap.docs.map((d) => d.data())
+      );
     });
   }, [selectedCustomer, monthKey]);
 
   /* 📅 BUILD CALENDAR */
   const daysInMonth = getDaysInMonth(year, month);
 
-  // ONLY the important changed part shown
+  const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    const date = getDateKey(year, month, day);
 
-const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
-  const day = i + 1;
-  const date = getDateKey(year, month, day);
+    const missed = deliveries.some(
+      (d) => d.date === date && d.status === "missed"
+    );
 
-  const missed = deliveries.some((d) => d.date === date);
+    return {
+      day,
+      date,
+      missed,
+      delivered: !missed,
+      disabled: isFuture(date),
+    };
+  });
 
-  return {
-    day,
-    date,
-    delivered: !missed,
-    missed,
-    disabled: isFuture(date),
-  };
-});
-
-
-  const filteredCustomers = customers.filter(c =>
+  const filteredCustomers = customers.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#2E7D32" barStyle="light-content" />
+  /* ---------- RENDER ---------- */
 
+  return (
+    <ScreenWrapper>
       {/* 🌈 HEADER */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => {
             if (month === 1) {
-              setYear(y => y - 1);
+              setYear((y) => y - 1);
               setMonth(12);
-            } else setMonth(m => m - 1);
+            } else setMonth((m) => m - 1);
           }}
         >
           <Text style={styles.nav}>◀</Text>
@@ -138,22 +139,24 @@ const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
           }
           onPress={() => {
             if (month === 12) {
-              setYear(y => y + 1);
+              setYear((y) => y + 1);
               setMonth(1);
-            } else setMonth(m => m + 1);
+            } else setMonth((m) => m + 1);
           }}
         >
           <Text style={styles.nav}>▶</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 👤 CUSTOMER DROPDOWN */}
+      {/* 👤 CUSTOMER SELECT */}
       <TouchableOpacity
         style={styles.dropdown}
         onPress={() => setCustomerModal(true)}
       >
         <Text style={styles.dropdownText}>
-          {selectedCustomer ? selectedCustomer.name : "Select customer"}
+          {selectedCustomer
+            ? selectedCustomer.name
+            : "Select customer"}
         </Text>
       </TouchableOpacity>
 
@@ -162,25 +165,26 @@ const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
         <>
           <View style={styles.legend}>
             <Text>🟢 Delivered</Text>
-            <Text style={{ marginLeft: 16 }}>🔴 Skipped</Text>
+            <Text style={{ marginLeft: 16 }}>🔴 Missed</Text>
           </View>
 
           <FlatList
             data={calendarData}
             numColumns={7}
-            keyExtractor={item => item.date}
+            keyExtractor={(item) => item.date}
             contentContainerStyle={{ paddingHorizontal: 16 }}
             renderItem={({ item }) => (
               <View
                 style={[
-                styles.dayBox,
-                item.missed ? styles.skipped : styles.delivered,
-                item.disabled && styles.disabled,
+                  styles.dayBox,
+                  item.missed
+                    ? styles.skipped
+                    : styles.delivered,
+                  item.disabled && styles.disabled,
                 ]}
-  >
-  <Text style={styles.dayText}>{item.day}</Text>
-</View>
-
+              >
+                <Text style={styles.dayText}>{item.day}</Text>
+              </View>
             )}
           />
         </>
@@ -190,7 +194,9 @@ const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
       <Modal visible={customerModal} animationType="slide" transparent>
         <View style={styles.modalBg}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Select Customer</Text>
+            <Text style={styles.modalTitle}>
+              Select Customer
+            </Text>
 
             <TextInput
               style={styles.search}
@@ -201,7 +207,7 @@ const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
 
             <FlatList
               data={filteredCustomers}
-              keyExtractor={i => i.id}
+              keyExtractor={(i) => i.id}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.customerRow}
@@ -224,19 +230,17 @@ const calendarData = Array.from({ length: daysInMonth }, (_, i) => {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 /* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F1F8E9" },
-
   topHeader: {
     backgroundColor: "#2E7D32",
-    paddingVertical: 16,
     paddingHorizontal: 16,
+    paddingBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",

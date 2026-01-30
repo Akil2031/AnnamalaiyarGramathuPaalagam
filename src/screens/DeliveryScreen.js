@@ -264,7 +264,7 @@ export default function DailyDeliveryScreen() {
 /* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F1F8E9" },
+  container: { flex: 1, backgroundColor: "#cb5b06" },
 
   topHeader: {
     backgroundColor: "#2E7D32",
