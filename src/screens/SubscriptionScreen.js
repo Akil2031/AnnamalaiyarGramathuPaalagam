@@ -510,14 +510,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F8E9" },
 
   topHeader: {
-    backgroundColor: "#2E7D32",
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
+  backgroundColor: "#2E7D32",
+
+  paddingHorizontal: 16,
+  paddingBottom: 16,   // ❗ NO paddingTop
+
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+
+  borderBottomLeftRadius: 24,
+  borderBottomRightRadius: 24,
+},
+
 
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
   nav: { color: "#fff", fontSize: 18 },

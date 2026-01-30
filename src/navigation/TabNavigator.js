@@ -21,7 +21,7 @@ export default function TabNavigator({
         tabBarIcon: ({ color, size }) => {
           const icons = {
             Customers: "people-outline",
-            Subscription: "calendar-outline",
+            Subscription: "wallet-outline",
             Calendar: "calendar-outline",
             Delivery: "bicycle-outline",
           };
