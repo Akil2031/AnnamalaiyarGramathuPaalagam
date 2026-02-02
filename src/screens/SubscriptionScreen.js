@@ -23,7 +23,6 @@ import {
   query,
   where,
   doc,
-  deleteDoc,
   getDocs,
 } from "firebase/firestore";
 
@@ -43,22 +42,27 @@ const monthLabel = (m) =>
     year: "numeric",
   });
 
-/* ---------- DELIVERY CALC ---------- */
+/* ---------- DELIVERY STATS ---------- */
 
-const getDeliveredDays = async (customerId, month, plannedDays) => {
-  const start = `${month}-01`;
-  const end = `${month}-31`;
-
+const getDeliveryStats = async (customerId, month) => {
   const q = query(
     collection(db, "deliveries"),
     where("customerId", "==", customerId),
-    where("date", ">=", start),
-    where("date", "<=", end),
-    where("status", "==", "missed")
+    where("date", ">=", `${month}-01`),
+    where("date", "<=", `${month}-31`)
   );
 
   const snap = await getDocs(q);
-  return Math.max(plannedDays - snap.size, 0);
+
+  let delivered = 0;
+  let missed = 0;
+
+  snap.forEach((d) => {
+    if (d.data().status === "delivered") delivered++;
+    if (d.data().status === "missed") missed++;
+  });
+
+  return { delivered, missed };
 };
 
 /* ---------- SCREEN ---------- */
@@ -69,8 +73,8 @@ export default function SubscriptionScreen() {
   );
   const [showMonthPicker, setShowMonthPicker] = useState(false);
 
-  const [customers, setCustomers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [customers, setCustomers] = useState([]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
@@ -82,17 +86,8 @@ export default function SubscriptionScreen() {
   const [pricePerLitre, setPricePerLitre] = useState("");
   const [plannedDays, setPlannedDays] = useState("");
 
-  const [paymentStatus, setPaymentStatus] = useState("unpaid");
+  const [paymentStatus, setPaymentStatus] = useState("pending");
   const [paymentMode, setPaymentMode] = useState(null);
-
-  /* ---------- LOAD CUSTOMERS ---------- */
-  useEffect(() => {
-    return onSnapshot(collection(db, "customers"), (snap) => {
-      setCustomers(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      );
-    });
-  }, []);
 
   /* ---------- LOAD SUBSCRIPTIONS ---------- */
   useEffect(() => {
@@ -105,35 +100,50 @@ export default function SubscriptionScreen() {
       setSubscriptions(
         snap.docs.map((d) => ({
           id: d.id,
+          deliveredDays: 0,
+          skippedDays: 0,
+          actualAmount: 0,
+          carryForwardAmount: 0,
+          paymentStatus: "pending",
           ...d.data(),
-          paymentStatus: d.data().paymentStatus || "unpaid",
-          paymentMode: d.data().paymentMode || null,
         }))
       );
     });
   }, [selectedMonth]);
 
-  /* ---------- AUTO RECALC ---------- */
+  /* ---------- LOAD CUSTOMERS ---------- */
+  useEffect(() => {
+    return onSnapshot(
+      query(collection(db, "customers"), where("status", "==", "active")),
+      (snap) => {
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        setCustomers(list);
+      }
+    );
+  }, []);
+
+  /* ---------- AUTO RECALC FROM DELIVERY ---------- */
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "deliveries"), async () => {
       for (const sub of subscriptions) {
-        const deliveredDays = await getDeliveredDays(
+        const { delivered, missed } = await getDeliveryStats(
           sub.customerId,
-          sub.month,
-          sub.plannedDays
+          sub.month
         );
 
         const perDay =
           sub.quantityPerDay * sub.pricePerLitre;
+
         const total = sub.plannedDays * perDay;
-        const actual = deliveredDays * perDay;
+        const actual = delivered * perDay;
 
         await updateDoc(doc(db, "subscriptions", sub.id), {
-          deliveredDays,
-          skippedDays: Math.max(
-            sub.plannedDays - deliveredDays,
-            0
-          ),
+          deliveredDays: delivered,
+          skippedDays: missed,
           actualAmount: actual,
           carryForwardAmount: Math.max(total - actual, 0),
         });
@@ -143,91 +153,110 @@ export default function SubscriptionScreen() {
     return unsub;
   }, [subscriptions]);
 
-  /* ---------- MONTH PICKER HANDLER ---------- */
-
-  const onMonthChange = (event, date) => {
-    if (Platform.OS === "android") {
-      setShowMonthPicker(false);
-    }
-
-    if (!date) return;
-
-    setSelectedMonth(formatMonth(date));
-  };
-
   /* ---------- FILTER CUSTOMERS ---------- */
 
   const subscribedCustomerIds = useMemo(
-    () => subscriptions.map((s) => s.customerId),
-    [subscriptions]
+    () =>
+      subscriptions
+        .filter((s) => s.id !== editingSub?.id)
+        .map((s) => s.customerId),
+    [subscriptions, editingSub]
   );
 
   const filteredCustomers = customers.filter(
     (c) =>
-      c.status === "active" &&
       !subscribedCustomerIds.includes(c.id) &&
       c.name.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
+  /* ---------- MONTH PICKER ---------- */
+
+  const onMonthChange = (event, date) => {
+    if (Platform.OS === "android") {
+      setShowMonthPicker(false);
+      if (event.type === "dismissed") return;
+    }
+    if (!date) return;
+    setSelectedMonth(formatMonth(date));
+  };
+
+  /* ---------- OPEN MODAL ---------- */
+
+  const openAdd = () => {
+    setEditingSub(null);
+    setSelectedCustomer(null);
+    setCustomerSearch("");
+    setQuantityPerDay("");
+    setPricePerLitre("");
+    setPlannedDays("");
+    setPaymentStatus("pending");
+    setPaymentMode(null);
+    setModalVisible(true);
+  };
+
+  const openEdit = (sub) => {
+    setEditingSub(sub);
+    setSelectedCustomer({
+      id: sub.customerId,
+      name: sub.customerName,
+    });
+    setCustomerSearch(sub.customerName);
+    setQuantityPerDay(String(sub.quantityPerDay));
+    setPricePerLitre(String(sub.pricePerLitre));
+    setPlannedDays(String(sub.plannedDays));
+    setPaymentStatus(sub.paymentStatus || "pending");
+    setPaymentMode(sub.paymentMode || null);
+    setModalVisible(true);
+  };
+
   /* ---------- SAVE ---------- */
 
   const saveSubscription = async () => {
-    try {
-      if (!selectedCustomer) {
-        Alert.alert("Select customer");
-        return;
-      }
-
-      const deliveredDays = await getDeliveredDays(
-        selectedCustomer.id,
-        selectedMonth,
-        Number(plannedDays)
-      );
-
-      const perDay =
-        Number(quantityPerDay) * Number(pricePerLitre);
-
-      const total = Number(plannedDays) * perDay;
-      const actual = deliveredDays * perDay;
-
-      const payload = {
-        customerId: selectedCustomer.id,
-        customerName: selectedCustomer.name,
-        month: selectedMonth,
-        quantityPerDay: Number(quantityPerDay),
-        pricePerLitre: Number(pricePerLitre),
-        plannedDays: Number(plannedDays),
-        deliveredDays,
-        skippedDays: Math.max(
-          Number(plannedDays) - deliveredDays,
-          0
-        ),
-        totalPlannedAmount: total,
-        actualAmount: actual,
-        carryForwardAmount: Math.max(total - actual, 0),
-        paymentStatus,
-        paymentMode:
-          paymentStatus === "paid" ? paymentMode : null,
-        paymentDate:
-          paymentStatus === "paid" ? Date.now() : null,
-      };
-
-      if (editingSub) {
-        await updateDoc(
-          doc(db, "subscriptions", editingSub.id),
-          payload
-        );
-      } else {
-        await addDoc(collection(db, "subscriptions"), {
-          ...payload,
-          createdAt: Date.now(),
-        });
-      }
-
-      setModalVisible(false);
-    } catch (e) {
-      Alert.alert("Save failed", e.message);
+    if (!selectedCustomer || !quantityPerDay || !pricePerLitre || !plannedDays) {
+      Alert.alert("Fill all fields");
+      return;
     }
+
+    const { delivered, missed } = await getDeliveryStats(
+      selectedCustomer.id,
+      selectedMonth
+    );
+
+    const perDay = quantityPerDay * pricePerLitre;
+    const total = plannedDays * perDay;
+    const actual = delivered * perDay;
+
+    const payload = {
+      customerId: selectedCustomer.id,
+      customerName: selectedCustomer.name,
+      month: selectedMonth,
+
+      quantityPerDay: Number(quantityPerDay),
+      pricePerLitre: Number(pricePerLitre),
+      plannedDays: Number(plannedDays),
+
+      deliveredDays: delivered,
+      skippedDays: missed,
+
+      totalPlannedAmount: total,
+      actualAmount: actual,
+      carryForwardAmount: Math.max(total - actual, 0),
+
+      paymentStatus,
+      paymentMode: paymentStatus === "paid" ? paymentMode : null,
+      paymentDate: paymentStatus === "paid" ? Date.now() : null,
+    };
+
+    if (editingSub) {
+      await updateDoc(doc(db, "subscriptions", editingSub.id), payload);
+    } else {
+      await addDoc(collection(db, "subscriptions"), {
+        ...payload,
+        createdAt: Date.now(),
+      });
+    }
+
+    setModalVisible(false);
   };
 
   /* ---------- UI ---------- */
@@ -236,24 +265,19 @@ export default function SubscriptionScreen() {
     <View style={styles.container}>
       <StatusBar backgroundColor="#2E7D32" barStyle="light-content" />
 
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Subscriptions</Text>
       </View>
 
-      {/* MONTH BAR (BELOW HEADER) */}
       <TouchableOpacity
         style={styles.monthBar}
         onPress={() => setShowMonthPicker(true)}
       >
-        <Text style={styles.monthText}>
-          {monthLabel(selectedMonth)}
-        </Text>
+        <Text style={styles.monthText}>{monthLabel(selectedMonth)}</Text>
         <Text style={styles.monthAction}>Change</Text>
       </TouchableOpacity>
 
-      {/* MONTH PICKER */}
-      {showMonthPicker && Platform.OS === "android" && (
+      {showMonthPicker && (
         <DateTimePicker
           value={parseMonth(selectedMonth)}
           mode="date"
@@ -262,45 +286,111 @@ export default function SubscriptionScreen() {
         />
       )}
 
-      {showMonthPicker && Platform.OS === "ios" && (
-        <View style={styles.iosPicker}>
-          <DateTimePicker
-            value={parseMonth(selectedMonth)}
-            mode="date"
-            display="spinner"
-            onChange={onMonthChange}
-          />
-        </View>
-      )}
-
-      {/* LIST */}
       <FlatList
         data={subscriptions}
         keyExtractor={(i) => i.id}
-        contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.name}>{item.customerName}</Text>
-            <Text>
-              {item.quantityPerDay} L × ₹{item.pricePerLitre}
+          <TouchableOpacity style={styles.card} onPress={() => openEdit(item)}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.name}>{item.customerName}</Text>
+              <Text
+                style={[
+                  styles.badge,
+                  item.paymentStatus === "paid" ? styles.paid : styles.unpaid,
+                ]}
+              >
+                {item.paymentStatus.toUpperCase()}
+              </Text>
+            </View>
+
+            <Text style={styles.meta}>
+              Expected: {item.plannedDays} | Delivered: {item.deliveredDays}
             </Text>
-            <Text>
-              Delivered {item.deliveredDays}/{item.plannedDays}
-            </Text>
-            <Text style={styles.amount}>
-              ₹{item.actualAmount.toFixed(2)}
-            </Text>
-          </View>
+
+            <Text style={styles.amount}>₹ {item.actualAmount.toFixed(2)}</Text>
+          </TouchableOpacity>
         )}
       />
 
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      >
+      <TouchableOpacity style={styles.fab} onPress={openAdd}>
         <Text style={{ color: "#fff", fontSize: 26 }}>＋</Text>
       </TouchableOpacity>
+
+      {/* MODAL */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalBg}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>
+              {editingSub ? "Edit" : "Add"} Subscription
+            </Text>
+
+            {!editingSub && (
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search customer"
+                  value={customerSearch}
+                  onChangeText={setCustomerSearch}
+                />
+
+                <FlatList
+                  data={filteredCustomers}
+                  keyExtractor={(i) => i.id}
+                  style={{ maxHeight: 150 }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.customerRow}
+                      onPress={() => {
+                        setSelectedCustomer(item);
+                        setCustomerSearch(item.name);
+                      }}
+                    >
+                      <Text>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </>
+            )}
+
+            <TextInput
+              style={styles.input}
+              placeholder="Quantity per day"
+              keyboardType="numeric"
+              value={quantityPerDay}
+              onChangeText={setQuantityPerDay}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Price per litre"
+              keyboardType="numeric"
+              value={pricePerLitre}
+              onChangeText={setPricePerLitre}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Planned days"
+              keyboardType="numeric"
+              value={plannedDays}
+              onChangeText={setPlannedDays}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.saveBtn} onPress={saveSubscription}>
+                <Text style={{ color: "#fff" }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -309,53 +399,48 @@ export default function SubscriptionScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F8E9" },
-
-  header: {
-    backgroundColor: "#2E7D32",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 20,
-  },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
-  },
+  header: { backgroundColor: "#2E7D32", padding: 16 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
 
   monthBar: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    margin: 16,
+    padding: 14,
     borderRadius: 14,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    elevation: 4,
   },
 
   monthText: { fontSize: 16, fontWeight: "600" },
   monthAction: { color: "#2563EB", fontWeight: "600" },
-
-  iosPicker: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 14,
-  },
 
   card: {
     backgroundColor: "#fff",
     margin: 16,
     padding: 16,
     borderRadius: 16,
-    elevation: 3,
+  },
+
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 
   name: { fontSize: 16, fontWeight: "700" },
-  amount: { marginTop: 6, color: "#15803D", fontWeight: "700" },
+
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  paid: { backgroundColor: "#DCFCE7", color: "#15803D" },
+  unpaid: { backgroundColor: "#FEE2E2", color: "#DC2626" },
+
+  meta: { color: "#64748B", marginTop: 4 },
+  amount: { marginTop: 6, fontWeight: "700", color: "#15803D" },
 
   fab: {
     position: "absolute",
@@ -367,6 +452,56 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 6,
+  },
+
+  modalBg: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  modal: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+  },
+
+  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 10 },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+  },
+
+  customerRow: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+
+  modalActions: {
+    flexDirection: "row",
+    marginTop: 16,
+  },
+
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: "#E5E7EB",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginRight: 6,
+  },
+
+  saveBtn: {
+    flex: 1,
+    backgroundColor: "#2E7D32",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
   },
 });
