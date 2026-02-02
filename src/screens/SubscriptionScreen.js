@@ -39,8 +39,8 @@ const todayStr = new Date().toISOString().slice(0, 10);
 /* ---------- DELIVERY STATS (NO FUTURE DAYS) ---------- */
 
 const getDeliveryStats = async (customerId, month) => {
-  const monthStart = `${month}-01`;
-  const monthEnd =
+  const start = `${month}-01`;
+  const end =
     month === todayStr.slice(0, 7) ? todayStr : `${month}-31`;
 
   const missedSnap = await getDocs(
@@ -48,18 +48,17 @@ const getDeliveryStats = async (customerId, month) => {
       collection(db, "deliveries"),
       where("customerId", "==", customerId),
       where("status", "==", "missed"),
-      where("date", ">=", monthStart),
-      where("date", "<=", monthEnd)
+      where("date", ">=", start),
+      where("date", "<=", end)
     )
   );
 
   const missed = missedSnap.size;
 
-  const start = new Date(monthStart);
-  const end = new Date(monthEnd);
-
+  const startDate = new Date(start);
+  const endDate = new Date(end);
   const possibleDays =
-    Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    Math.floor((endDate - startDate) / 86400000) + 1;
 
   return { missed, possibleDays };
 };
@@ -77,16 +76,14 @@ export default function SubscriptionScreen() {
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
 
+  /* ADD / EDIT */
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [customerSearch, setCustomerSearch] = useState("");
-
   const [quantityPerDay, setQuantityPerDay] = useState("");
   const [pricePerLitre, setPricePerLitre] = useState("");
   const [plannedDays, setPlannedDays] = useState("");
-
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState(null);
 
@@ -101,19 +98,16 @@ export default function SubscriptionScreen() {
         setSubscriptions(
           snap.docs.map((d) => ({
             id: d.id,
-
-            paymentStatus: "pending",
-            paymentMode: null,
-            paymentDate: null,
-            paidAmount: 0,
-
             plannedAmount: 0,
             actualAmount: 0,
             balanceAmount: 0,
             carryForwardAmount: 0,
             deliveredDays: 0,
             skippedDays: 0,
-
+            paymentStatus: "pending",
+            paidAmount: 0,
+            paymentMode: null,
+            paymentDate: null,
             ...d.data(),
           }))
         );
@@ -129,17 +123,15 @@ export default function SubscriptionScreen() {
         where("status", "==", "active")
       ),
       (snap) => {
-        const list = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-        list.sort((a, b) => a.name.localeCompare(b.name));
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => a.name.localeCompare(b.name));
         setCustomers(list);
       }
     );
   }, []);
 
-  /* ---------- AUTO RECALC ---------- */
+  /* ---------- AUTO RECALC (DELIVERY BASED) ---------- */
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "deliveries"),
@@ -188,7 +180,7 @@ export default function SubscriptionScreen() {
   /* ---------- FILTER + SORT ---------- */
 
   const filteredSubscriptions = useMemo(() => {
-    return [...subscriptions]
+    return subscriptions
       .filter((s) =>
         s.customerName
           .toLowerCase()
@@ -216,15 +208,88 @@ export default function SubscriptionScreen() {
         acc.carry += s.carryForwardAmount || 0;
         return acc;
       },
-      { expected: 0, consumed: 0, paid: 0, balance: 0, carry: 0 }
+      {
+        expected: 0,
+        consumed: 0,
+        paid: 0,
+        balance: 0,
+        carry: 0,
+      }
     );
   }, [filteredSubscriptions]);
 
-  /* ---------- UI ---------- */
+  /* ---------- ADD / EDIT ---------- */
+
+  const openAdd = () => {
+    setEditingSub(null);
+    setSelectedCustomer(null);
+    setQuantityPerDay("");
+    setPricePerLitre("");
+    setPlannedDays("");
+    setPaidAmount("");
+    setPaymentMode(null);
+    setModalVisible(true);
+  };
+
+  const openEdit = (sub) => {
+    setEditingSub(sub);
+    setSelectedCustomer({
+      id: sub.customerId,
+      name: sub.customerName,
+    });
+    setQuantityPerDay(String(sub.quantityPerDay));
+    setPricePerLitre(String(sub.pricePerLitre));
+    setPlannedDays(String(sub.plannedDays));
+    setPaidAmount(String(sub.paidAmount || ""));
+    setPaymentMode(sub.paymentMode || null);
+    setModalVisible(true);
+  };
+
+  const saveSubscription = async () => {
+    if (
+      !selectedCustomer ||
+      !quantityPerDay ||
+      !pricePerLitre ||
+      !plannedDays
+    ) {
+      Alert.alert("Fill all required fields");
+      return;
+    }
+
+    const payload = {
+      customerId: selectedCustomer.id,
+      customerName: selectedCustomer.name,
+      month: selectedMonth,
+      quantityPerDay: Number(quantityPerDay),
+      pricePerLitre: Number(pricePerLitre),
+      plannedDays: Number(plannedDays),
+      paidAmount: Number(paidAmount || 0),
+      paymentMode:
+        paidAmount > 0 ? paymentMode : null,
+      paymentDate:
+        paidAmount > 0 ? Date.now() : null,
+    };
+
+    if (editingSub) {
+      await updateDoc(
+        doc(db, "subscriptions", editingSub.id),
+        payload
+      );
+    } else {
+      await addDoc(collection(db, "subscriptions"), {
+        ...payload,
+        createdAt: Date.now(),
+      });
+    }
+
+    setModalVisible(false);
+  };
+
+  /* ---------- UI (UNCHANGED DESIGN) ---------- */
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#2E7D32" barStyle="light-content" />
+      <StatusBar backgroundColor="#2E7D32" />
 
       {/* HEADER */}
       <View style={styles.header}>
@@ -234,13 +299,11 @@ export default function SubscriptionScreen() {
       {/* MONTH */}
       <View style={styles.monthBar}>
         <TouchableOpacity
-          onPress={() =>
-            setSelectedMonth((m) => {
-              const d = new Date(`${m}-01`);
-              d.setMonth(d.getMonth() - 1);
-              return formatMonth(d);
-            })
-          }
+          onPress={() => {
+            const d = new Date(`${selectedMonth}-01`);
+            d.setMonth(d.getMonth() - 1);
+            setSelectedMonth(formatMonth(d));
+          }}
         >
           <Text style={styles.monthNav}>◀</Text>
         </TouchableOpacity>
@@ -250,13 +313,11 @@ export default function SubscriptionScreen() {
         </Text>
 
         <TouchableOpacity
-          onPress={() =>
-            setSelectedMonth((m) => {
-              const d = new Date(`${m}-01`);
-              d.setMonth(d.getMonth() + 1);
-              return formatMonth(d);
-            })
-          }
+          onPress={() => {
+            const d = new Date(`${selectedMonth}-01`);
+            d.setMonth(d.getMonth() + 1);
+            setSelectedMonth(formatMonth(d));
+          }}
         >
           <Text style={styles.monthNav}>▶</Text>
         </TouchableOpacity>
@@ -273,28 +334,28 @@ export default function SubscriptionScreen() {
       {/* FILTER */}
       <View style={styles.filterRow}>
         {[
-          { key: "all", label: "ALL" },
-          { key: "pending", label: "UNPAID" },
-          { key: "partial", label: "PARTIAL" },
-          { key: "paid", label: "PAID" },
+          { k: "all", l: "ALL" },
+          { k: "pending", l: "UNPAID" },
+          { k: "partial", l: "PARTIAL" },
+          { k: "paid", l: "PAID" },
         ].map((f) => (
           <TouchableOpacity
-            key={f.key}
+            key={f.k}
             style={[
               styles.filterBtn,
-              paymentFilter === f.key &&
+              paymentFilter === f.k &&
                 styles.filterBtnActive,
             ]}
-            onPress={() => setPaymentFilter(f.key)}
+            onPress={() => setPaymentFilter(f.k)}
           >
             <Text
               style={[
                 styles.filterText,
-                paymentFilter === f.key &&
+                paymentFilter === f.k &&
                   styles.filterTextActive,
               ]}
             >
-              {f.label}
+              {f.l}
             </Text>
           </TouchableOpacity>
         ))}
@@ -306,7 +367,10 @@ export default function SubscriptionScreen() {
         keyExtractor={(i) => i.id}
         contentContainerStyle={{ paddingBottom: 140 }}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => openEdit(item)}
+          >
             <View style={styles.cardHeader}>
               <Text style={styles.name}>
                 {item.customerName}
@@ -349,7 +413,7 @@ export default function SubscriptionScreen() {
                 )}
               </Text>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       />
 
@@ -361,20 +425,108 @@ export default function SubscriptionScreen() {
           ["Paid", monthlySummary.paid],
           ["Balance", monthlySummary.balance],
           ["Carry", monthlySummary.carry],
-        ].map(([label, val]) => (
-          <View style={styles.summaryRow} key={label}>
-            <Text style={styles.summaryLabel}>{label}</Text>
+        ].map(([l, v]) => (
+          <View style={styles.summaryRow} key={l}>
+            <Text style={styles.summaryLabel}>{l}</Text>
             <Text style={styles.summaryValue}>
-              ₹ {val.toFixed(2)}
+              ₹ {v.toFixed(2)}
             </Text>
           </View>
         ))}
       </View>
+
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={openAdd}>
+        <Text style={{ color: "#fff", fontSize: 26 }}>＋</Text>
+      </TouchableOpacity>
+
+      {/* MODAL */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalBg}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>
+              {editingSub ? "Edit" : "Add"} Subscription
+            </Text>
+
+            {!editingSub &&
+              customers
+                .filter(
+                  (c) =>
+                    !subscriptions.some(
+                      (s) => s.customerId === c.id
+                    )
+                )
+                .map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => setSelectedCustomer(c)}
+                  >
+                    <Text>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+
+            <TextInput
+              style={styles.input}
+              placeholder="Quantity per day"
+              keyboardType="numeric"
+              value={quantityPerDay}
+              onChangeText={setQuantityPerDay}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Price per litre"
+              keyboardType="numeric"
+              value={pricePerLitre}
+              onChangeText={setPricePerLitre}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Planned days"
+              keyboardType="numeric"
+              value={plannedDays}
+              onChangeText={setPlannedDays}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Paid amount"
+              keyboardType="numeric"
+              value={paidAmount}
+              onChangeText={setPaidAmount}
+            />
+
+            <View style={styles.paymentRow}>
+              {["cash", "online"].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  style={[
+                    styles.payBtn,
+                    paymentMode === m &&
+                      styles.payBtnActive,
+                  ]}
+                  onPress={() => setPaymentMode(m)}
+                >
+                  <Text>{m.toUpperCase()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={saveSubscription}
+            >
+              <Text style={{ color: "#fff" }}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-/* ---------- STYLES ---------- */
+/* ---------- STYLES (SAME UI) ---------- */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F8E9" },
@@ -468,4 +620,65 @@ const styles = StyleSheet.create({
 
   summaryLabel: { fontWeight: "700" },
   summaryValue: { fontWeight: "700" },
+
+  fab: {
+    position: "absolute",
+    right: 30,
+    bottom: 135,
+    backgroundColor: "#2E7D32",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  modalBg: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  modal: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+  },
+
+  modalTitle: { fontWeight: "700", marginBottom: 10 },
+
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+  },
+
+  paymentRow: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+
+  payBtn: {
+    flex: 1,
+    padding: 12,
+    marginHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+
+  payBtnActive: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#16A34A",
+  },
+
+  saveBtn: {
+    backgroundColor: "#2E7D32",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 14,
+  },
 });

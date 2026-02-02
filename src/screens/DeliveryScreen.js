@@ -47,13 +47,16 @@ const monthFromDate = (dateStr) => dateStr.slice(0, 7);
 
 export default function DailyDeliveryScreen() {
   const [selectedDate, setSelectedDate] = useState(todayStr);
+
   const [subscriptions, setSubscriptions] = useState([]);
   const [missedDeliveries, setMissedDeliveries] = useState([]);
+
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // all | delivered | missed
 
   const monthKey = monthFromDate(selectedDate);
 
-  /* ---------- LOAD SUBSCRIPTIONS FOR MONTH ---------- */
+  /* ---------- LOAD SUBSCRIPTIONS (MONTH) ---------- */
   useEffect(() => {
     return onSnapshot(
       query(
@@ -61,17 +64,21 @@ export default function DailyDeliveryScreen() {
         where("month", "==", monthKey)
       ),
       (snap) => {
-        setSubscriptions(
-          snap.docs.map((d) => ({
+        const list = snap.docs
+          .map((d) => ({
             id: d.id,
             ...d.data(),
           }))
-        );
+          .sort((a, b) =>
+            a.customerName.localeCompare(b.customerName)
+          );
+
+        setSubscriptions(list);
       }
     );
   }, [monthKey]);
 
-  /* ---------- LOAD MISSED DELIVERIES FOR DAY ---------- */
+  /* ---------- LOAD MISSED DELIVERIES (DAY) ---------- */
   useEffect(() => {
     return onSnapshot(
       query(
@@ -90,7 +97,7 @@ export default function DailyDeliveryScreen() {
     );
   }, [selectedDate]);
 
-  /* ---------- TOGGLE MISSED (ONLY) ---------- */
+  /* ---------- TOGGLE MISSED ---------- */
 
   const toggleDelivery = async (customerId) => {
     const docId = `${customerId}_${selectedDate}`;
@@ -100,10 +107,8 @@ export default function DailyDeliveryScreen() {
     );
 
     if (isMissed) {
-      // remove missed → delivered
       await deleteDoc(doc(db, "deliveries", docId));
     } else {
-      // mark missed
       await setDoc(doc(db, "deliveries", docId), {
         customerId,
         date: selectedDate,
@@ -113,19 +118,68 @@ export default function DailyDeliveryScreen() {
     }
   };
 
-  /* ---------- SEARCH ---------- */
+  /* ---------- FILTER + SEARCH ---------- */
 
   const filteredSubscriptions = useMemo(() => {
-    if (!search.trim()) return subscriptions;
+    return subscriptions
+      .filter((s) =>
+        s.customerName
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
+      .filter((s) => {
+        if (statusFilter === "all") return true;
 
-    return subscriptions.filter((s) =>
-      s.customerName
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    );
-  }, [search, subscriptions]);
+        const isMissed = missedDeliveries.some(
+          (d) => d.customerId === s.customerId
+        );
 
-  /* ---------- RENDER ---------- */
+        return statusFilter === "missed"
+          ? isMissed
+          : !isMissed;
+      });
+  }, [subscriptions, search, statusFilter, missedDeliveries]);
+
+  /* ---------- TOTAL LITRES (DAY) ---------- */
+
+  const dailyTotals = useMemo(() => {
+    let expected = 0;
+    let delivered = 0;
+
+    filteredSubscriptions.forEach((s) => {
+      expected += s.quantityPerDay;
+
+      const isMissed = missedDeliveries.some(
+        (d) => d.customerId === s.customerId
+      );
+
+      if (!isMissed) {
+        delivered += s.quantityPerDay;
+      }
+    });
+
+    return { expected, delivered };
+  }, [filteredSubscriptions, missedDeliveries]);
+
+  /* ---------- MONTH SUMMARY ---------- */
+
+  const monthSummary = useMemo(() => {
+    let planned = 0;
+    let delivered = 0;
+    let missed = 0;
+
+    subscriptions.forEach((s) => {
+      planned += s.quantityPerDay * s.plannedDays;
+      delivered += s.quantityPerDay * (s.deliveredDays || 0);
+      missed +=
+        s.quantityPerDay *
+        (s.plannedDays - (s.deliveredDays || 0));
+    });
+
+    return { planned, delivered, missed };
+  }, [subscriptions]);
+
+  /* ---------- RENDER ITEM ---------- */
 
   const renderItem = ({ item }) => {
     const isMissed = missedDeliveries.some(
@@ -181,6 +235,13 @@ export default function DailyDeliveryScreen() {
     <View style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
+        <Text style={styles.headerTitle}>
+          Daily Delivery
+        </Text>
+      </View>
+
+      {/* DATE BAR */}
+      <View style={styles.dateBar}>
         <TouchableOpacity
           onPress={() =>
             setSelectedDate(addDays(selectedDate, -1))
@@ -189,7 +250,7 @@ export default function DailyDeliveryScreen() {
           <Text style={styles.nav}>◀</Text>
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
+        <Text style={styles.dateText}>
           {prettyDate(selectedDate)}
         </Text>
 
@@ -213,6 +274,16 @@ export default function DailyDeliveryScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* DAILY TOTALS */}
+      <View style={styles.totalBar}>
+        <Text style={styles.totalText}>
+          Expected: {dailyTotals.expected} L
+        </Text>
+        <Text style={styles.totalText}>
+          Delivered: {dailyTotals.delivered} L
+        </Text>
+      </View>
+
       {/* SEARCH */}
       <TextInput
         style={styles.search}
@@ -221,13 +292,78 @@ export default function DailyDeliveryScreen() {
         onChangeText={setSearch}
       />
 
+      {/* STATUS FILTER */}
+      <View style={styles.filterRow}>
+        {[
+          { key: "all", label: "ALL" },
+          { key: "delivered", label: "DELIVERED" },
+          { key: "missed", label: "MISSED" },
+        ].map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[
+              styles.filterBtn,
+              statusFilter === f.key &&
+                styles.filterBtnActive,
+            ]}
+            onPress={() => setStatusFilter(f.key)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                statusFilter === f.key &&
+                  styles.filterTextActive,
+              ]}
+            >
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* LIST */}
       <FlatList
         data={filteredSubscriptions}
         keyExtractor={(i) => i.id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       />
+
+      {/* MONTH SUMMARY */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>
+          Month Summary
+        </Text>
+
+        <View style={styles.summaryRow}>
+          <Text>Planned</Text>
+          <Text>{monthSummary.planned} L</Text>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text>Delivered</Text>
+          <Text>{monthSummary.delivered} L</Text>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text>Missed</Text>
+          <Text>{monthSummary.missed} L</Text>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text>Delivery %</Text>
+          <Text>
+            {monthSummary.planned
+              ? Math.round(
+                  (monthSummary.delivered /
+                    monthSummary.planned) *
+                    100
+                )
+              : 0}
+            %
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -240,8 +376,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: "#2E7D32",
     padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -253,8 +387,35 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  nav: { color: "#fff", fontSize: 18 },
+  dateBar: {
+    backgroundColor: "#fff",
+    margin: 16,
+    padding: 14,
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    elevation: 3,
+  },
+
+  dateText: { fontSize: 16, fontWeight: "700" },
+
+  nav: { fontSize: 18, color: "#2563EB" },
   navDisabled: { opacity: 0.4 },
+
+  totalBar: {
+    backgroundColor: "#E8F5E9",
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  totalText: {
+    fontWeight: "700",
+    color: "#2E7D32",
+  },
 
   search: {
     backgroundColor: "#fff",
@@ -264,6 +425,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
+
+  filterRow: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+
+  filterBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+
+  filterBtnActive: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#16A34A",
+  },
+
+  filterText: { fontWeight: "700", color: "#334155" },
+  filterTextActive: { color: "#15803D" },
 
   card: {
     backgroundColor: "#fff",
@@ -293,4 +479,23 @@ const styles = StyleSheet.create({
 
   deliveredText: { color: "#2E7D32" },
   missedText: { color: "#DC2626" },
+
+  summaryCard: {
+    backgroundColor: "#fff",
+    margin: 16,
+    padding: 16,
+    borderRadius: 16,
+  },
+
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
 });
