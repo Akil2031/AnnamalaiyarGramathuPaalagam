@@ -9,8 +9,6 @@ import {
   StyleSheet,
 } from "react-native";
 
-import ScreenWrapper from "../components/ScreenWrapper";
-
 import { db } from "../firebase/firebase";
 import {
   collection,
@@ -19,12 +17,22 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
 /* ---------- HELPERS ---------- */
 
 const formatDate = (d) => d.toISOString().slice(0, 10);
-const todayStr = formatDate(new Date());
+
+const prettyDate = (d) =>
+  new Date(d).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+const today = new Date();
+const todayStr = formatDate(today);
 
 const addDays = (dateStr, delta) => {
   const d = new Date(dateStr);
@@ -32,6 +40,7 @@ const addDays = (dateStr, delta) => {
   return formatDate(d);
 };
 
+const isFutureDate = (dateStr) => dateStr > todayStr;
 const monthFromDate = (dateStr) => dateStr.slice(0, 7);
 
 /* ---------- SCREEN ---------- */
@@ -39,137 +48,221 @@ const monthFromDate = (dateStr) => dateStr.slice(0, 7);
 export default function DailyDeliveryScreen() {
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [subscriptions, setSubscriptions] = useState([]);
-  const [deliveries, setDeliveries] = useState([]);
+  const [missedDeliveries, setMissedDeliveries] = useState([]);
   const [search, setSearch] = useState("");
 
   const monthKey = monthFromDate(selectedDate);
 
-  /* LOAD SUBSCRIPTIONS */
+  /* ---------- LOAD SUBSCRIPTIONS FOR MONTH ---------- */
   useEffect(() => {
     return onSnapshot(
-      query(collection(db, "subscriptions"), where("month", "==", monthKey)),
+      query(
+        collection(db, "subscriptions"),
+        where("month", "==", monthKey)
+      ),
       (snap) => {
         setSubscriptions(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
         );
       }
     );
   }, [monthKey]);
 
-  /* LOAD DELIVERIES FOR DAY */
+  /* ---------- LOAD MISSED DELIVERIES FOR DAY ---------- */
   useEffect(() => {
     return onSnapshot(
-      query(collection(db, "deliveries"), where("date", "==", selectedDate)),
+      query(
+        collection(db, "deliveries"),
+        where("date", "==", selectedDate),
+        where("status", "==", "missed")
+      ),
       (snap) => {
-        setDeliveries(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        setMissedDeliveries(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
         );
       }
     );
   }, [selectedDate]);
 
-  /* TOGGLE DELIVERY */
+  /* ---------- TOGGLE MISSED (ONLY) ---------- */
+
   const toggleDelivery = async (customerId) => {
     const docId = `${customerId}_${selectedDate}`;
-    const existing = deliveries.find(
+
+    const isMissed = missedDeliveries.some(
       (d) => d.customerId === customerId
     );
 
-    await setDoc(doc(db, "deliveries", docId), {
-      customerId,
-      date: selectedDate,
-      status: existing?.status === "missed" ? "delivered" : "missed",
-      createdAt: Date.now(),
-    });
+    if (isMissed) {
+      // remove missed → delivered
+      await deleteDoc(doc(db, "deliveries", docId));
+    } else {
+      // mark missed
+      await setDoc(doc(db, "deliveries", docId), {
+        customerId,
+        date: selectedDate,
+        status: "missed",
+        createdAt: Date.now(),
+      });
+    }
   };
 
-  /* SEARCH */
+  /* ---------- SEARCH ---------- */
+
   const filteredSubscriptions = useMemo(() => {
     if (!search.trim()) return subscriptions;
+
     return subscriptions.filter((s) =>
-      s.customerName.toLowerCase().includes(search.toLowerCase())
+      s.customerName
+        .toLowerCase()
+        .includes(search.toLowerCase())
     );
   }, [search, subscriptions]);
 
-  /* RENDER */
+  /* ---------- RENDER ---------- */
 
   const renderItem = ({ item }) => {
-    const delivery = deliveries.find(
+    const isMissed = missedDeliveries.some(
       (d) => d.customerId === item.customerId
     );
 
-    const delivered = delivery?.status !== "missed";
+    const delivered = !isMissed;
 
     return (
       <View
         style={[
           styles.card,
-          delivered ? styles.deliveredCard : styles.missedCard,
+          delivered
+            ? styles.deliveredCard
+            : styles.missedCard,
         ]}
       >
         <View>
-          <Text style={styles.name}>{item.customerName}</Text>
-          <Text style={styles.meta}>{item.quantityPerDay} L</Text>
+          <Text style={styles.name}>
+            {item.customerName}
+          </Text>
+          <Text style={styles.meta}>
+            {item.quantityPerDay} L
+          </Text>
         </View>
 
-        <Switch
-          value={delivered}
-          onValueChange={() => toggleDelivery(item.customerId)}
-        />
+        <View style={styles.switchWrap}>
+          <Text
+            style={[
+              styles.statusText,
+              delivered
+                ? styles.deliveredText
+                : styles.missedText,
+            ]}
+          >
+            {delivered ? "Delivered" : "Missed"}
+          </Text>
+
+          <Switch
+            value={delivered}
+            onValueChange={() =>
+              toggleDelivery(item.customerId)
+            }
+          />
+        </View>
       </View>
     );
   };
 
+  /* ---------- UI ---------- */
+
   return (
-    <ScreenWrapper>
+    <View style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setSelectedDate(addDays(selectedDate, -1))}>
+        <TouchableOpacity
+          onPress={() =>
+            setSelectedDate(addDays(selectedDate, -1))
+          }
+        >
           <Text style={styles.nav}>◀</Text>
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{selectedDate}</Text>
+        <Text style={styles.headerTitle}>
+          {prettyDate(selectedDate)}
+        </Text>
 
-        <TouchableOpacity onPress={() => setSelectedDate(addDays(selectedDate, 1))}>
-          <Text style={styles.nav}>▶</Text>
+        <TouchableOpacity
+          disabled={isFutureDate(
+            addDays(selectedDate, 1)
+          )}
+          onPress={() =>
+            setSelectedDate(addDays(selectedDate, 1))
+          }
+        >
+          <Text
+            style={[
+              styles.nav,
+              isFutureDate(addDays(selectedDate, 1)) &&
+                styles.navDisabled,
+            ]}
+          >
+            ▶
+          </Text>
         </TouchableOpacity>
       </View>
 
+      {/* SEARCH */}
       <TextInput
         style={styles.search}
-        placeholder="Search customer"
+        placeholder="🔍 Search customer"
         value={search}
         onChangeText={setSearch}
       />
 
+      {/* LIST */}
       <FlatList
         data={filteredSubscriptions}
-        keyExtractor={(i) => i.customerId}
+        keyExtractor={(i) => i.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
-    </ScreenWrapper>
+    </View>
   );
 }
 
 /* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F1F8E9" },
+
   header: {
     backgroundColor: "#2E7D32",
     padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
 
-  headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
   nav: { color: "#fff", fontSize: 18 },
+  navDisabled: { opacity: 0.4 },
 
   search: {
     backgroundColor: "#fff",
     margin: 16,
     padding: 14,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
 
   card: {
@@ -188,5 +281,16 @@ const styles = StyleSheet.create({
   missedCard: { borderLeftColor: "#DC2626" },
 
   name: { fontSize: 16, fontWeight: "600" },
-  meta: { color: "#64748B" },
+  meta: { color: "#64748B", marginTop: 2 },
+
+  switchWrap: { alignItems: "flex-end" },
+
+  statusText: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  deliveredText: { color: "#2E7D32" },
+  missedText: { color: "#DC2626" },
 });
