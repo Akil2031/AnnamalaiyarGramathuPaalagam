@@ -74,6 +74,7 @@ export default function CalendarScreen() {
             id: d.id,
             customerId: d.data().customerId,
             customerName: d.data().customerName,
+            endDate: d.data().endDate,
           }))
           .sort((a, b) =>
             a.customerName.localeCompare(b.customerName)
@@ -111,24 +112,29 @@ export default function CalendarScreen() {
   const daysInMonth = getDaysInMonth(year, month);
 
   const calendarData = Array.from(
-    { length: daysInMonth },
-    (_, i) => {
-      const day = i + 1;
-      const date = getDateKey(year, month, day);
+  { length: daysInMonth },
+  (_, i) => {
+    const day = i + 1;
+    const date = getDateKey(year, month, day);
 
-      const missed = deliveries.some(
-        (d) => d.date === date && d.status === "missed"
-      );
+    const missed = deliveries.some(
+      (d) => d.date === date && d.status === "missed"
+    );
 
-      return {
-        day,
-        date,
-        missed,
-        delivered: !missed,
-        disabled: isFuture(date),
-      };
-    }
-  );
+    const expired =
+      selectedCustomer?.endDate &&
+      date > selectedCustomer.endDate;
+
+    return {
+      day,
+      date,
+      missed,
+      expired, // 👈 NEW
+      disabled: isFuture(date),
+    };
+  }
+);
+
 
   /* ---------- CUSTOMER FILTER ---------- */
 
@@ -230,14 +236,17 @@ export default function CalendarScreen() {
             }}
             renderItem={({ item }) => (
               <View
-                style={[
-                  styles.dayBox,
-                  item.missed
-                    ? styles.skipped
-                    : styles.delivered,
-                  item.disabled && styles.disabled,
-                ]}
-              >
+  style={[
+    styles.dayBox,
+    item.expired
+      ? styles.expired
+      : item.missed
+      ? styles.skipped
+      : styles.delivered,
+    item.disabled && styles.disabled,
+  ]}
+>
+
                 <Text style={styles.dayText}>
                   {item.day}
                 </Text>
@@ -406,4 +415,9 @@ const styles = StyleSheet.create({
     color: "#2563EB",
     fontWeight: "600",
   },
+
+  expired: {
+  backgroundColor: "#D32F2F", // deep red
+},
+
 });
