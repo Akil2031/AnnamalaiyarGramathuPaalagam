@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Animated } from "react-native";
+
 import {
   View,
   Text,
@@ -12,6 +14,7 @@ import {
 } from "react-native";
 
 import { db } from "../firebase/firebase";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   collection,
   addDoc,
@@ -28,6 +31,12 @@ import {
 const formatMonth = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
+const toDateInput = (tsOrStr) => {
+  if (!tsOrStr) return "";
+  if (typeof tsOrStr === "string") return tsOrStr;
+  return new Date(tsOrStr).toISOString().slice(0, 10);
+};
+
 const monthLabel = (m) =>
   new Date(`${m}-01`).toLocaleString("en-IN", {
     month: "long",
@@ -38,25 +47,45 @@ const todayStr = new Date().toISOString().slice(0, 10);
 
 /* ---------- DELIVERY STATS (NO FUTURE DAYS) ---------- */
 
-const getDeliveryStats = async (customerId, month) => {
-  const start = `${month}-01`;
-  const end =
-    month === todayStr.slice(0, 7) ? todayStr : `${month}-31`;
+const getDeliveryStats = async (
+  customerId,
+  month,
+  subscriptionEndDate // 👈 new param
+) => {
+  const monthStart = `${month}-01`;
+
+  let monthEnd =
+    month === todayStr.slice(0, 7)
+      ? todayStr
+      : `${month}-31`;
+
+  // ✅ Apply endDate restriction
+  if (subscriptionEndDate) {
+    monthEnd = monthEnd > subscriptionEndDate
+      ? subscriptionEndDate
+      : monthEnd;
+  }
+
+  // 🛑 If subscription already ended before this month
+  if (monthEnd < monthStart) {
+    return { missed: 0, possibleDays: 0 };
+  }
 
   const missedSnap = await getDocs(
     query(
       collection(db, "deliveries"),
       where("customerId", "==", customerId),
       where("status", "==", "missed"),
-      where("date", ">=", start),
-      where("date", "<=", end)
+      where("date", ">=", monthStart),
+      where("date", "<=", monthEnd)
     )
   );
 
   const missed = missedSnap.size;
 
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+  const startDate = new Date(monthStart);
+  const endDate = new Date(monthEnd);
+
   const possibleDays =
     Math.floor((endDate - startDate) / 86400000) + 1;
 
@@ -86,6 +115,11 @@ export default function SubscriptionScreen() {
   const [plannedDays, setPlannedDays] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState(null);
+  //const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState(null);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+
 
   /* ---------- LOAD SUBSCRIPTIONS ---------- */
   useEffect(() => {
@@ -137,8 +171,12 @@ export default function SubscriptionScreen() {
       collection(db, "deliveries"),
       async () => {
         for (const sub of subscriptions) {
-          const { missed, possibleDays } =
-            await getDeliveryStats(sub.customerId, sub.month);
+         const { missed, possibleDays } =
+  await getDeliveryStats(
+    sub.customerId,
+    sub.month,
+    sub.endDate
+  );
 
           const delivered = Math.max(
             Math.min(possibleDays, sub.plannedDays) - missed,
@@ -196,6 +234,31 @@ export default function SubscriptionScreen() {
       );
   }, [subscriptions, search, paymentFilter]);
 
+  const subscriptionCount = useMemo(() => {
+  return filteredSubscriptions.length;
+}, [filteredSubscriptions]);
+
+const statusCounts = useMemo(() => {
+  return subscriptions.reduce(
+    (acc, s) => {
+      acc.all += 1;
+
+      if (s.paymentStatus === "paid") acc.paid += 1;
+      else if (s.paymentStatus === "partial") acc.partial += 1;
+      else acc.pending += 1;
+
+      return acc;
+    },
+    {
+      all: 0,
+      paid: 0,
+      partial: 0,
+      pending: 0,
+    }
+  );
+}, [subscriptions]);
+
+
   /* ---------- MONTHLY SUMMARY ---------- */
 
   const monthlySummary = useMemo(() => {
@@ -228,6 +291,7 @@ export default function SubscriptionScreen() {
     setPlannedDays("");
     setPaidAmount("");
     setPaymentMode(null);
+    setEndDate(null);
     setModalVisible(true);
   };
 
@@ -242,6 +306,8 @@ export default function SubscriptionScreen() {
     setPlannedDays(String(sub.plannedDays));
     setPaidAmount(String(sub.paidAmount || ""));
     setPaymentMode(sub.paymentMode || null);
+    //setEndDate(toDateInput(sub.endDate));
+    setEndDate(sub.endDate ? new Date(sub.endDate) : null);
     setModalVisible(true);
   };
 
@@ -263,6 +329,8 @@ export default function SubscriptionScreen() {
       quantityPerDay: Number(quantityPerDay),
       pricePerLitre: Number(pricePerLitre),
       plannedDays: Number(plannedDays),
+      //endDate: endDate || null, 
+      endDate: endDate ? endDate.toISOString().slice(0, 10) : null,
       paidAmount: Number(paidAmount || 0),
       paymentMode:
         paidAmount > 0 ? paymentMode : null,
@@ -361,6 +429,13 @@ export default function SubscriptionScreen() {
         ))}
       </View>
 
+      <View style={styles.countBar}>
+  <Text style={styles.countText}>
+    {paymentFilter.toUpperCase()} : {subscriptionCount}
+  </Text>
+</View>
+
+
       {/* LIST */}
       <FlatList
         data={filteredSubscriptions}
@@ -404,6 +479,14 @@ export default function SubscriptionScreen() {
             <Text style={styles.meta}>
               Paid ₹ {item.paidAmount.toFixed(2)}
             </Text>
+
+            {item.endDate && (
+  <Text style={styles.meta}>
+    Ends on:{" "}
+    {new Date(item.endDate).toLocaleDateString("en-IN")}
+  </Text>
+)}
+
 
             {item.paymentStatus !== "pending" && (
               <Text style={styles.meta}>
@@ -489,6 +572,31 @@ export default function SubscriptionScreen() {
               onChangeText={setPlannedDays}
             />
 
+            <TouchableOpacity
+  style={styles.input}
+  onPress={() => setShowEndPicker(true)}
+>
+  <Text style={{ color: endDate ? "#000" : "#9CA3AF" }}>
+    {endDate
+      ? endDate.toLocaleDateString("en-IN")
+      : "Select End Date"}
+  </Text>
+</TouchableOpacity>
+
+{showEndPicker && (
+  <DateTimePicker
+    value={endDate || new Date()}
+    mode="date"
+    display="calendar"
+    minimumDate={new Date()}
+    onChange={(event, selectedDate) => {
+      setShowEndPicker(false);
+      if (selectedDate) setEndDate(selectedDate);
+    }}
+  />
+)}
+
+
             <TextInput
               style={styles.input}
               placeholder="Paid amount"
@@ -531,8 +639,26 @@ export default function SubscriptionScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F8E9" },
 
-  header: { backgroundColor: "#2E7D32", padding: 16 },
+ header: {
+    backgroundColor: "#2E7D32",
+    padding: 16,
+    alignItems: "center",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+
+  countBar: {
+  marginHorizontal: 16,
+  marginBottom: 8,
+  alignItems: "flex-end",
+},
+
+countText: {
+  fontWeight: "700",
+  color: "#334155",
+},
+
 
   monthBar: {
     backgroundColor: "#fff",

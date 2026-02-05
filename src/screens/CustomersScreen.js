@@ -21,10 +21,13 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase/firebase";
+
 export default function Customer() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
-  const [sortOrder, setSortOrder] = useState("asc"); // asc | desc
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -41,6 +44,22 @@ export default function Customer() {
       );
     });
   }, []);
+
+  /* 🔒 LOGOUT */
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Do you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: () => signOut(auth),
+        },
+      ]
+    );
+  };
 
   const resetForm = () => {
     setName("");
@@ -169,10 +188,18 @@ export default function Customer() {
 
       {/* HEADER */}
       <View style={styles.topHeader}>
-        <Text style={styles.headerTitle}>Customers</Text>
-        <Text style={styles.headerSub}>
-          Manage your milk delivery customers
-        </Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>Welcome back!</Text>
+            <Text style={styles.headerSub}>
+              Manage your milk delivery customers
+            </Text>
+          </View>
+
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.logoutBtn}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* COUNT + SORT */}
@@ -212,7 +239,7 @@ export default function Customer() {
         data={filteredCustomers}
         keyExtractor={(i) => i.id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       />
 
       {/* FAB */}
@@ -287,12 +314,30 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
+
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
   headerTitle: {
     color: "#fff",
     fontSize: 26,
     fontWeight: "700",
   },
+
   headerSub: { color: "#E8F5E9", marginTop: 4 },
+
+  logoutBtn: {
+    color: "#fff",
+    fontWeight: "700",
+    borderWidth: 1,
+    borderColor: "#fff",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
 
   listHeader: {
     flexDirection: "row",
@@ -339,6 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontWeight: "700",
   },
+
   active: { backgroundColor: "#DCFCE7", color: "#15803D" },
   inactive: { backgroundColor: "#FEE2E2", color: "#DC2626" },
 
@@ -349,6 +395,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 12,
   },
+
   link: { color: "#2563EB", fontWeight: "600" },
   delete: { color: "#DC2626", fontWeight: "600" },
 
@@ -364,6 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 6,
   },
+
   fabText: { color: "#fff", fontSize: 28 },
 
   modalOverlay: {
@@ -401,6 +449,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 6,
   },
+
   primaryBtnText: {
     color: "#fff",
     fontSize: 16,

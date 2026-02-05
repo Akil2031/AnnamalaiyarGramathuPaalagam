@@ -40,6 +40,12 @@ const addDays = (dateStr, delta) => {
   return formatDate(d);
 };
 
+const isActiveOnDate = (sub, dateStr) => {
+  if (!sub.endDate) return true;
+  return dateStr <= sub.endDate;
+};
+
+
 const isFutureDate = (dateStr) => dateStr > todayStr;
 const monthFromDate = (dateStr) => dateStr.slice(0, 7);
 
@@ -119,26 +125,38 @@ export default function DailyDeliveryScreen() {
   };
 
   /* ---------- FILTER + SEARCH ---------- */
+const filteredSubscriptions = useMemo(() => {
+  return subscriptions
+    // ✅ SHOW ONLY ACTIVE SUBSCRIPTIONS
+    .filter((s) =>
+      isActiveOnDate(s, selectedDate)
+    )
+    // 🔍 SEARCH
+    .filter((s) =>
+      s.customerName
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    )
+    // 🎛 STATUS FILTER
+    .filter((s) => {
+      if (statusFilter === "all") return true;
 
-  const filteredSubscriptions = useMemo(() => {
-    return subscriptions
-      .filter((s) =>
-        s.customerName
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      )
-      .filter((s) => {
-        if (statusFilter === "all") return true;
+      const isMissed = missedDeliveries.some(
+        (d) => d.customerId === s.customerId
+      );
 
-        const isMissed = missedDeliveries.some(
-          (d) => d.customerId === s.customerId
-        );
+      return statusFilter === "missed"
+        ? isMissed
+        : !isMissed;
+    });
+}, [
+  subscriptions,
+  selectedDate,
+  search,
+  statusFilter,
+  missedDeliveries,
+]);
 
-        return statusFilter === "missed"
-          ? isMissed
-          : !isMissed;
-      });
-  }, [subscriptions, search, statusFilter, missedDeliveries]);
 
   /* ---------- TOTAL LITRES (DAY) ---------- */
 
@@ -186,7 +204,9 @@ export default function DailyDeliveryScreen() {
       (d) => d.customerId === item.customerId
     );
 
-    const delivered = !isMissed;
+    const isActive = isActiveOnDate(item, selectedDate);
+    const delivered = isActive && !isMissed;
+
 
     return (
       <View
@@ -219,11 +239,13 @@ export default function DailyDeliveryScreen() {
           </Text>
 
           <Switch
-            value={delivered}
-            onValueChange={() =>
-              toggleDelivery(item.customerId)
-            }
-          />
+  value={delivered}
+  disabled={!isActive}
+  onValueChange={() =>
+    toggleDelivery(item.customerId)
+  }
+/>
+
         </View>
       </View>
     );
@@ -277,10 +299,10 @@ export default function DailyDeliveryScreen() {
       {/* DAILY TOTALS */}
       <View style={styles.totalBar}>
         <Text style={styles.totalText}>
-          Expected: {dailyTotals.expected} L
+          Expected: {dailyTotals.expected.toFixed(2)} L
         </Text>
         <Text style={styles.totalText}>
-          Delivered: {dailyTotals.delivered} L
+          Delivered: {dailyTotals.delivered.toFixed(2)} L
         </Text>
       </View>
 
@@ -337,7 +359,7 @@ export default function DailyDeliveryScreen() {
 
         <View style={styles.summaryRow}>
           <Text>Planned</Text>
-          <Text>{monthSummary.planned} L</Text>
+          <Text>{monthSummary.planned.toFixed(2)} L</Text>
         </View>
 
         <View style={styles.summaryRow}>

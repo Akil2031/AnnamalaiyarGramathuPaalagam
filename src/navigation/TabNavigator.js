@@ -18,6 +18,7 @@ export default function TabNavigator({
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        headerShown: false, // ✅ IMPORTANT
         tabBarIcon: ({ color, size }) => {
           const icons = {
             Customers: "people-outline",
@@ -27,42 +28,35 @@ export default function TabNavigator({
           };
 
           return (
-            <Ionicons name={icons[route.name]} size={size} color={color} />
+            <Ionicons
+              name={icons[route.name]}
+              size={size}
+              color={color}
+            />
           );
         },
         tabBarActiveTintColor: "#2E7D32",
         tabBarInactiveTintColor: "gray",
       })}
     >
-     <Tab.Screen
-  name="Customers"
-  options={{ headerShown: false }}
->
-  {() => (
-    <CustomersScreen
-      customers={customers}
-      setCustomers={setCustomers}
-    />
-  )}
-</Tab.Screen>
+      <Tab.Screen name="Customers">
+        {() => (
+          <CustomersScreen
+            customers={customers}
+            setCustomers={setCustomers}
+          />
+        )}
+      </Tab.Screen>
 
-
-      <Tab.Screen name="Subscription"
-      options={{ headerShown: false }}
-      >
-        
+      <Tab.Screen name="Subscription">
         {() => <SubscriptionScreen customers={customers} />}
       </Tab.Screen>
 
-      <Tab.Screen name="Calendar"
-      options={{ headerShown: false }}
-      >
+      <Tab.Screen name="Calendar">
         {() => <CalendarScreen customers={customers} />}
       </Tab.Screen>
 
-      <Tab.Screen name="Delivery"
-      options={{ headerShown: false }}
-      >
+      <Tab.Screen name="Delivery">
         {() => (
           <DeliveryScreen
             customers={customers}
