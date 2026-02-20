@@ -7,17 +7,18 @@
     "icon": "./assets/agp.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "cover",
       "backgroundColor": "#2E7D32"
     },
-
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.milksubscriptionsimple",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -26,19 +27,15 @@
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.milksubscriptionsimple"
     },
-
     "web": {
       "favicon": "./assets/agp.png"
     },
-
     "extra": {
       "eas": {
         "projectId": "60983ebd-a1ac-4722-b8c5-a74469e8f727"
       }
     },
-
     "owner": "annamalaiyargramathupalagam",
-
     "plugins": [
       "@react-native-community/datetimepicker"
     ]
