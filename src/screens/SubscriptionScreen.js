@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Animated } from "react-native";
+import { Animated, Linking, AppState } from "react-native";
 
 import {
   View,
@@ -45,28 +45,52 @@ const monthLabel = (m) =>
 
 const todayStr = new Date().toISOString().slice(0, 10);
 
-/* ---------- DELIVERY STATS (NO FUTURE DAYS) ---------- */
+/* ---------- MESSAGE HELPERS (FREE WHATSAPP + SMS) ---------- */
 
-const getDeliveryStats = async (
-  customerId,
-  month,
-  subscriptionEndDate // 👈 new param
-) => {
+const buildSubscriptionMessage = (sub) => {
+  const total = ((sub.quantityPerDay || 0) * (sub.pricePerLitre || 0) * (sub.plannedDays || 0)).toFixed(2);
+
+  return `Dear ${sub.customerName},
+
+Your milk subscription for ${monthLabel(
+    sub.month
+  )} is created.
+
+Qty/day: ${sub.quantityPerDay} L
+Price: ₹${sub.pricePerLitre}
+Days: ${sub.plannedDays}
+
+Total Amount: ₹${total}
+
+Pay via UPI: 9710527964@yescred
+
+Thank you 
+Annamalaiyar Gramathu Paalagam 🙏`;
+};
+
+const openWhatsApp = (mobile, message) => {
+  if (!mobile) return;
+  const url = `https://wa.me/91${mobile}?text=${encodeURIComponent(message)}`;
+  Linking.openURL(url);
+};
+
+const openSMS = (mobile, message) => {
+  if (!mobile) return;
+  const url = `sms:${mobile}?body=${encodeURIComponent(message)}`;
+  Linking.openURL(url);
+};
+
+/* ---------- DELIVERY STATS ---------- */
+
+const getDeliveryStats = async (customerId, month, subscriptionEndDate) => {
   const monthStart = `${month}-01`;
 
-  let monthEnd =
-    month === todayStr.slice(0, 7)
-      ? todayStr
-      : `${month}-31`;
+  let monthEnd = month === todayStr.slice(0, 7) ? todayStr : `${month}-31`;
 
-  // ✅ Apply endDate restriction
   if (subscriptionEndDate) {
-    monthEnd = monthEnd > subscriptionEndDate
-      ? subscriptionEndDate
-      : monthEnd;
+    monthEnd = monthEnd > subscriptionEndDate ? subscriptionEndDate : monthEnd;
   }
 
-  // 🛑 If subscription already ended before this month
   if (monthEnd < monthStart) {
     return { missed: 0, possibleDays: 0 };
   }
@@ -86,8 +110,7 @@ const getDeliveryStats = async (
   const startDate = new Date(monthStart);
   const endDate = new Date(monthEnd);
 
-  const possibleDays =
-    Math.floor((endDate - startDate) / 86400000) + 1;
+  const possibleDays = Math.floor((endDate - startDate) / 86400000) + 1;
 
   return { missed, possibleDays };
 };
@@ -95,9 +118,7 @@ const getDeliveryStats = async (
 /* ---------- SCREEN ---------- */
 
 export default function SubscriptionScreen() {
-  const [selectedMonth, setSelectedMonth] = useState(
-    formatMonth(new Date())
-  );
+  const [selectedMonth, setSelectedMonth] = useState(formatMonth(new Date()));
 
   const [subscriptions, setSubscriptions] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -105,7 +126,6 @@ export default function SubscriptionScreen() {
   const [search, setSearch] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
 
-  /* ADD / EDIT */
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
 
@@ -115,19 +135,17 @@ export default function SubscriptionScreen() {
   const [plannedDays, setPlannedDays] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState(null);
-  //const [endDate, setEndDate] = useState("");
   const [endDate, setEndDate] = useState(null);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-
+  const [waitingForSmsReturn, setWaitingForSmsReturn] = useState(false);
+  const [lastMsg, setLastMsg] = useState("");
+  const [lastMobile, setLastMobile] = useState("");
 
   /* ---------- LOAD SUBSCRIPTIONS ---------- */
   useEffect(() => {
     return onSnapshot(
-      query(
-        collection(db, "subscriptions"),
-        where("month", "==", selectedMonth)
-      ),
+      query(collection(db, "subscriptions"), where("month", "==", selectedMonth)),
       (snap) => {
         setSubscriptions(
           snap.docs.map((d) => ({
@@ -151,115 +169,68 @@ export default function SubscriptionScreen() {
 
   /* ---------- LOAD CUSTOMERS ---------- */
   useEffect(() => {
-    return onSnapshot(
-      query(
-        collection(db, "customers"),
-        where("status", "==", "active")
-      ),
-      (snap) => {
-        const list = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-        setCustomers(list);
-      }
-    );
+    return onSnapshot(query(collection(db, "customers"), where("status", "==", "active")), (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setCustomers(list);
+    });
   }, []);
 
-  /* ---------- AUTO RECALC (DELIVERY BASED) ---------- */
+  /* ---------- AUTO RECALC ---------- */
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "deliveries"),
-      async () => {
-        for (const sub of subscriptions) {
-         const { missed, possibleDays } =
-  await getDeliveryStats(
-    sub.customerId,
-    sub.month,
-    sub.endDate
-  );
+    const unsub = onSnapshot(collection(db, "deliveries"), async () => {
+      for (const sub of subscriptions) {
+        const { missed, possibleDays } = await getDeliveryStats(sub.customerId, sub.month, sub.endDate);
 
-          const delivered = Math.max(
-            Math.min(possibleDays, sub.plannedDays) - missed,
-            0
-          );
+        const delivered = Math.max(Math.min(possibleDays, sub.plannedDays) - missed, 0);
 
-          const perDay =
-            sub.quantityPerDay * sub.pricePerLitre;
+        const perDay = sub.quantityPerDay * sub.pricePerLitre;
 
-          const plannedAmount =
-            sub.plannedDays * perDay;
+        const plannedAmount = sub.plannedDays * perDay;
+        const actualAmount = delivered * perDay;
+        const paid = sub.paidAmount || 0;
 
-          const actualAmount =
-            delivered * perDay;
-
-          const paid = sub.paidAmount || 0;
-
-          await updateDoc(doc(db, "subscriptions", sub.id), {
-            deliveredDays: delivered,
-            skippedDays: missed,
-            plannedAmount,
-            actualAmount,
-            balanceAmount: Math.max(actualAmount - paid, 0),
-            carryForwardAmount: Math.max(paid - actualAmount, 0),
-            paymentStatus:
-              paid === 0
-                ? "pending"
-                : paid < actualAmount
-                ? "partial"
-                : "paid",
-          });
-        }
+        await updateDoc(doc(db, "subscriptions", sub.id), {
+          deliveredDays: delivered,
+          skippedDays: missed,
+          plannedAmount,
+          actualAmount,
+          balanceAmount: Math.max(actualAmount - paid, 0),
+          carryForwardAmount: Math.max(paid - actualAmount, 0),
+          paymentStatus: paid === 0 ? "pending" : paid < actualAmount ? "partial" : "paid",
+        });
       }
-    );
+    });
 
     return unsub;
   }, [subscriptions]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && waitingForSmsReturn) {
+        setWaitingForSmsReturn(false);
+
+        Alert.alert("Send WhatsApp also?", "Send subscription details via WhatsApp", [
+          { text: "Send WhatsApp", onPress: () => openWhatsApp(lastMobile, lastMsg) },
+          { text: "Skip", style: "cancel" },
+        ]);
+      }
+    });
+
+    return () => sub.remove();
+  }, [waitingForSmsReturn, lastMsg, lastMobile]);
 
   /* ---------- FILTER + SORT ---------- */
 
   const filteredSubscriptions = useMemo(() => {
     return subscriptions
-      .filter((s) =>
-        s.customerName
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      )
-      .filter((s) =>
-        paymentFilter === "all"
-          ? true
-          : s.paymentStatus === paymentFilter
-      )
-      .sort((a, b) =>
-        a.customerName.localeCompare(b.customerName)
-      );
+      .filter((s) => s.customerName.toLowerCase().includes(search.toLowerCase()))
+      .filter((s) => (paymentFilter === "all" ? true : s.paymentStatus === paymentFilter))
+      .sort((a, b) => a.customerName.localeCompare(b.customerName));
   }, [subscriptions, search, paymentFilter]);
 
-  const subscriptionCount = useMemo(() => {
-  return filteredSubscriptions.length;
-}, [filteredSubscriptions]);
-
-const statusCounts = useMemo(() => {
-  return subscriptions.reduce(
-    (acc, s) => {
-      acc.all += 1;
-
-      if (s.paymentStatus === "paid") acc.paid += 1;
-      else if (s.paymentStatus === "partial") acc.partial += 1;
-      else acc.pending += 1;
-
-      return acc;
-    },
-    {
-      all: 0,
-      paid: 0,
-      partial: 0,
-      pending: 0,
-    }
-  );
-}, [subscriptions]);
-
-
-  /* ---------- MONTHLY SUMMARY ---------- */
+  const subscriptionCount = useMemo(() => filteredSubscriptions.length, [filteredSubscriptions]);
 
   const monthlySummary = useMemo(() => {
     return filteredSubscriptions.reduce(
@@ -271,13 +242,7 @@ const statusCounts = useMemo(() => {
         acc.carry += s.carryForwardAmount || 0;
         return acc;
       },
-      {
-        expected: 0,
-        consumed: 0,
-        paid: 0,
-        balance: 0,
-        carry: 0,
-      }
+      { expected: 0, consumed: 0, paid: 0, balance: 0, carry: 0 }
     );
   }, [filteredSubscriptions]);
 
@@ -297,27 +262,18 @@ const statusCounts = useMemo(() => {
 
   const openEdit = (sub) => {
     setEditingSub(sub);
-    setSelectedCustomer({
-      id: sub.customerId,
-      name: sub.customerName,
-    });
+    setSelectedCustomer({ id: sub.customerId, name: sub.customerName, mobile: sub.mobile });
     setQuantityPerDay(String(sub.quantityPerDay));
     setPricePerLitre(String(sub.pricePerLitre));
     setPlannedDays(String(sub.plannedDays));
     setPaidAmount(String(sub.paidAmount || ""));
     setPaymentMode(sub.paymentMode || null);
-    //setEndDate(toDateInput(sub.endDate));
     setEndDate(sub.endDate ? new Date(sub.endDate) : null);
     setModalVisible(true);
   };
 
   const saveSubscription = async () => {
-    if (
-      !selectedCustomer ||
-      !quantityPerDay ||
-      !pricePerLitre ||
-      !plannedDays
-    ) {
+    if (!selectedCustomer || !quantityPerDay || !pricePerLitre || !plannedDays) {
       Alert.alert("Fill all required fields");
       return;
     }
@@ -325,46 +281,51 @@ const statusCounts = useMemo(() => {
     const payload = {
       customerId: selectedCustomer.id,
       customerName: selectedCustomer.name,
+      mobile: selectedCustomer.mobile || "",
       month: selectedMonth,
       quantityPerDay: Number(quantityPerDay),
       pricePerLitre: Number(pricePerLitre),
       plannedDays: Number(plannedDays),
-      //endDate: endDate || null, 
       endDate: endDate ? endDate.toISOString().slice(0, 10) : null,
       paidAmount: Number(paidAmount || 0),
-      paymentMode:
-        paidAmount > 0 ? paymentMode : null,
-      paymentDate:
-        paidAmount > 0 ? Date.now() : null,
+      paymentMode: paidAmount > 0 ? paymentMode : null,
+      paymentDate: paidAmount > 0 ? Date.now() : null,
     };
 
     if (editingSub) {
-      await updateDoc(
-        doc(db, "subscriptions", editingSub.id),
-        payload
-      );
+      await updateDoc(doc(db, "subscriptions", editingSub.id), payload);
     } else {
-      await addDoc(collection(db, "subscriptions"), {
-        ...payload,
-        createdAt: Date.now(),
-      });
+      await addDoc(collection(db, "subscriptions"), { ...payload, createdAt: Date.now() });
+
+      if (payload.mobile) {
+        const msg = buildSubscriptionMessage(payload);
+
+        // STEP 1 → Open SMS composer
+        openSMS(payload.mobile, msg);
+
+        // STEP 2 → After small delay, ask for WhatsApp
+        setTimeout(() => {
+          Alert.alert("Send WhatsApp also?", "Send subscription details via WhatsApp", [
+            { text: "Send WhatsApp", onPress: () => openWhatsApp(payload.mobile, msg) },
+            { text: "Skip", style: "cancel" },
+          ]);
+        }, 2500);
+      }
     }
 
     setModalVisible(false);
   };
 
-  /* ---------- UI (UNCHANGED DESIGN) ---------- */
+  /* ---------- UI ---------- */
 
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor="#2E7D32" />
 
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Subscriptions</Text>
       </View>
 
-      {/* MONTH */}
       <View style={styles.monthBar}>
         <TouchableOpacity
           onPress={() => {
@@ -376,9 +337,7 @@ const statusCounts = useMemo(() => {
           <Text style={styles.monthNav}>◀</Text>
         </TouchableOpacity>
 
-        <Text style={styles.monthText}>
-          {monthLabel(selectedMonth)}
-        </Text>
+        <Text style={styles.monthText}>{monthLabel(selectedMonth)}</Text>
 
         <TouchableOpacity
           onPress={() => {
@@ -391,15 +350,8 @@ const statusCounts = useMemo(() => {
         </TouchableOpacity>
       </View>
 
-      {/* SEARCH */}
-      <TextInput
-        style={styles.search}
-        placeholder="🔍 Search customer"
-        value={search}
-        onChangeText={setSearch}
-      />
+      <TextInput style={styles.search} placeholder="🔍 Search customer" value={search} onChangeText={setSearch} />
 
-      {/* FILTER */}
       <View style={styles.filterRow}>
         {[
           { k: "all", l: "ALL" },
@@ -409,47 +361,26 @@ const statusCounts = useMemo(() => {
         ].map((f) => (
           <TouchableOpacity
             key={f.k}
-            style={[
-              styles.filterBtn,
-              paymentFilter === f.k &&
-                styles.filterBtnActive,
-            ]}
+            style={[styles.filterBtn, paymentFilter === f.k && styles.filterBtnActive]}
             onPress={() => setPaymentFilter(f.k)}
           >
-            <Text
-              style={[
-                styles.filterText,
-                paymentFilter === f.k &&
-                  styles.filterTextActive,
-              ]}
-            >
-              {f.l}
-            </Text>
+            <Text style={[styles.filterText, paymentFilter === f.k && styles.filterTextActive]}>{f.l}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.countBar}>
-  <Text style={styles.countText}>
-    {paymentFilter.toUpperCase()} : {subscriptionCount}
-  </Text>
-</View>
+        <Text style={styles.countText}>{paymentFilter.toUpperCase()} : {subscriptionCount}</Text>
+      </View>
 
-
-      {/* LIST */}
       <FlatList
         data={filteredSubscriptions}
         keyExtractor={(i) => i.id}
         contentContainerStyle={{ paddingBottom: 140 }}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => openEdit(item)}
-          >
+          <TouchableOpacity style={styles.card} onPress={() => openEdit(item)}>
             <View style={styles.cardHeader}>
-              <Text style={styles.name}>
-                {item.customerName}
-              </Text>
+              <Text style={styles.name}>{item.customerName}</Text>
               <Text
                 style={[
                   styles.badge,
@@ -464,43 +395,43 @@ const statusCounts = useMemo(() => {
               </Text>
             </View>
 
-            <Text style={styles.meta}>
-              Delivered: {item.deliveredDays}/{item.plannedDays}
-            </Text>
-
-            <Text style={styles.meta}>
-              Expected ₹ {item.plannedAmount.toFixed(2)}
-            </Text>
-
-            <Text style={styles.meta}>
-              Consumed ₹ {item.actualAmount.toFixed(2)}
-            </Text>
-
-            <Text style={styles.meta}>
-              Paid ₹ {item.paidAmount.toFixed(2)}
-            </Text>
+            <Text style={styles.meta}>Delivered: {item.deliveredDays}/{item.plannedDays}</Text>
+            <Text style={styles.meta}>Expected ₹ {item.plannedAmount.toFixed(2)}</Text>
+            <Text style={styles.meta}>Consumed ₹ {item.actualAmount.toFixed(2)}</Text>
+            <Text style={styles.meta}>Paid ₹ {item.paidAmount.toFixed(2)}</Text>
 
             {item.endDate && (
-  <Text style={styles.meta}>
-    Ends on:{" "}
-    {new Date(item.endDate).toLocaleDateString("en-IN")}
-  </Text>
-)}
-
+              <Text style={styles.meta}>Ends on: {new Date(item.endDate).toLocaleDateString("en-IN")}</Text>
+            )}
 
             {item.paymentStatus !== "pending" && (
               <Text style={styles.meta}>
-                Mode: {item.paymentMode?.toUpperCase()} |{" "}
-                {new Date(item.paymentDate).toLocaleDateString(
-                  "en-IN"
-                )}
+                Mode: {item.paymentMode?.toUpperCase()} | {new Date(item.paymentDate).toLocaleDateString("en-IN")}
               </Text>
+            )}
+
+            {/* ACTION BUTTONS */}
+            {item.mobile && (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.smsBtn}
+                  onPress={() => openSMS(item.mobile, buildSubscriptionMessage(item))}
+                >
+                  <Text style={styles.smsText}>✉ SMS</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.waBtn}
+                  onPress={() => openWhatsApp(item.mobile, buildSubscriptionMessage(item))}
+                >
+                  <Text style={styles.waText}>🟢 WhatsApp</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </TouchableOpacity>
         )}
       />
 
-      {/* SUMMARY */}
       <View style={styles.summaryCard}>
         {[
           ["Expected", monthlySummary.expected],
@@ -511,121 +442,73 @@ const statusCounts = useMemo(() => {
         ].map(([l, v]) => (
           <View style={styles.summaryRow} key={l}>
             <Text style={styles.summaryLabel}>{l}</Text>
-            <Text style={styles.summaryValue}>
-              ₹ {v.toFixed(2)}
-            </Text>
+            <Text style={styles.summaryValue}>₹ {v.toFixed(2)}</Text>
           </View>
         ))}
       </View>
 
-      {/* FAB */}
       <TouchableOpacity style={styles.fab} onPress={openAdd}>
         <Text style={{ color: "#fff", fontSize: 26 }}>＋</Text>
       </TouchableOpacity>
 
-      {/* MODAL */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalBg}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>
-              {editingSub ? "Edit" : "Add"} Subscription
-            </Text>
+            <Text style={styles.modalTitle}>{editingSub ? "Edit" : "Add"} Subscription</Text>
 
             {!editingSub && (
-  <FlatList
-    style={{ maxHeight: 200, marginBottom: 10 }}
-    data={customers.filter(
-      (c) => !subscriptions.some((s) => s.customerId === c.id)
-    )}
-    keyExtractor={(item) => item.id}
-    renderItem={({ item }) => (
-      <TouchableOpacity
-        style={{
-          paddingVertical: 6,
-          borderBottomWidth: 0.5,
-          borderColor: "#E5E7EB",
-        }}
-        onPress={() => setSelectedCustomer(item)}
-      >
-        <Text
-          style={{
-            fontWeight: selectedCustomer?.id === item.id ? "700" : "400",
-            color: selectedCustomer?.id === item.id ? "#16A34A" : "#000",
-          }}
-        >
-          {item.name}
-        </Text>
-      </TouchableOpacity>
-    )}
-  />
-)}
+              <FlatList
+                style={{ maxHeight: 200, marginBottom: 10 }}
+                data={customers.filter((c) => !subscriptions.some((s) => s.customerId === c.id))}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{ paddingVertical: 6, borderBottomWidth: 0.5, borderColor: "#E5E7EB" }}
+                    onPress={() => setSelectedCustomer(item)}
+                  >
+                    <Text
+                      style={{
+                        fontWeight: selectedCustomer?.id === item.id ? "700" : "400",
+                        color: selectedCustomer?.id === item.id ? "#16A34A" : "#000",
+                      }}
+                    >
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Quantity per day"
-              keyboardType="numeric"
-              value={quantityPerDay}
-              onChangeText={setQuantityPerDay}
-            />
+            <TextInput style={styles.input} placeholder="Quantity per day" keyboardType="numeric" value={quantityPerDay} onChangeText={setQuantityPerDay} />
+            <TextInput style={styles.input} placeholder="Price per litre" keyboardType="numeric" value={pricePerLitre} onChangeText={setPricePerLitre} />
+            <TextInput style={styles.input} placeholder="Planned days" keyboardType="numeric" value={plannedDays} onChangeText={setPlannedDays} />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Price per litre"
-              keyboardType="numeric"
-              value={pricePerLitre}
-              onChangeText={setPricePerLitre}
-            />
+            <TouchableOpacity style={styles.input} onPress={() => setShowEndPicker(true)}>
+              <Text style={{ color: endDate ? "#000" : "#9CA3AF" }}>
+                {endDate ? endDate.toLocaleDateString("en-IN") : "Select End Date"}
+              </Text>
+            </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Planned days"
-              keyboardType="numeric"
-              value={plannedDays}
-              onChangeText={setPlannedDays}
-            />
+            {showEndPicker && (
+              <DateTimePicker
+                value={endDate || new Date()}
+                mode="date"
+                display="calendar"
+                minimumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowEndPicker(false);
+                  if (selectedDate) setEndDate(selectedDate);
+                }}
+              />
+            )}
 
-            <TouchableOpacity
-  style={styles.input}
-  onPress={() => setShowEndPicker(true)}
->
-  <Text style={{ color: endDate ? "#000" : "#9CA3AF" }}>
-    {endDate
-      ? endDate.toLocaleDateString("en-IN")
-      : "Select End Date"}
-  </Text>
-</TouchableOpacity>
-
-{showEndPicker && (
-  <DateTimePicker
-    value={endDate || new Date()}
-    mode="date"
-    display="calendar"
-    minimumDate={new Date()}
-    onChange={(event, selectedDate) => {
-      setShowEndPicker(false);
-      if (selectedDate) setEndDate(selectedDate);
-    }}
-  />
-)}
-
-
-            <TextInput
-              style={styles.input}
-              placeholder="Paid amount"
-              keyboardType="numeric"
-              value={paidAmount}
-              onChangeText={setPaidAmount}
-            />
+            <TextInput style={styles.input} placeholder="Paid amount" keyboardType="numeric" value={paidAmount} onChangeText={setPaidAmount} />
 
             <View style={styles.paymentRow}>
               {["cash", "online"].map((m) => (
                 <TouchableOpacity
                   key={m}
-                  style={[
-                    styles.payBtn,
-                    paymentMode === m &&
-                      styles.payBtnActive,
-                  ]}
+                  style={[styles.payBtn, paymentMode === m && styles.payBtnActive]}
                   onPress={() => setPaymentMode(m)}
                 >
                   <Text>{m.toUpperCase()}</Text>
@@ -633,21 +516,13 @@ const statusCounts = useMemo(() => {
               ))}
             </View>
 
-            {/* CANCEL */}
-<TouchableOpacity
-  style={[styles.saveBtn, { backgroundColor: "#CBD5E1" }]}
-  onPress={() => setModalVisible(false)}
->
-  <Text style={{ color: "#111", fontWeight: "700" }}>Cancel</Text>
-</TouchableOpacity>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: "#CBD5E1" }]} onPress={() => setModalVisible(false)}>
+              <Text style={{ color: "#111", fontWeight: "700" }}>Cancel</Text>
+            </TouchableOpacity>
 
-{/* SAVE */}
-<TouchableOpacity
-  style={styles.saveBtn}
-  onPress={saveSubscription}
->
-  <Text style={{ color: "#fff" }}>Save</Text>
-</TouchableOpacity>
+            <TouchableOpacity style={styles.saveBtn} onPress={saveSubscription}>
+              <Text style={{ color: "#fff" }}>Save</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -655,177 +530,48 @@ const statusCounts = useMemo(() => {
   );
 }
 
-/* ---------- STYLES (SAME UI) ---------- */
+/* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F8E9" },
-
- header: {
-    backgroundColor: "#2E7D32",
-    padding: 16,
-    alignItems: "center",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
+  header: { backgroundColor: "#2E7D32", padding: 16, alignItems: "center", borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
-
-  countBar: {
-  marginHorizontal: 16,
-  marginBottom: 8,
-  alignItems: "flex-end",
-},
-
-countText: {
-  fontWeight: "700",
-  color: "#334155",
-},
-
-
-  monthBar: {
-    backgroundColor: "#fff",
-    margin: 16,
-    padding: 14,
-    borderRadius: 14,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
+  countBar: { marginHorizontal: 16, marginBottom: 8, alignItems: "flex-end" },
+  countText: { fontWeight: "700", color: "#334155" },
+  monthBar: { backgroundColor: "#fff", margin: 16, padding: 14, borderRadius: 14, flexDirection: "row", justifyContent: "space-between" },
   monthText: { fontSize: 16, fontWeight: "700" },
   monthNav: { fontSize: 18, color: "#2563EB" },
-
-  search: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 12,
-  },
-
-  filterRow: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-
-  filterBtn: {
-    flex: 1,
-    padding: 10,
-    marginHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    alignItems: "center",
-  },
-
-  filterBtnActive: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#16A34A",
-  },
-
+  search: { backgroundColor: "#fff", marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 12 },
+  filterRow: { flexDirection: "row", marginHorizontal: 16, marginBottom: 8 },
+  filterBtn: { flex: 1, padding: 10, marginHorizontal: 4, borderRadius: 10, borderWidth: 1, borderColor: "#CBD5E1", alignItems: "center" },
+  filterBtnActive: { backgroundColor: "#DCFCE7", borderColor: "#16A34A" },
   filterText: { fontWeight: "700" },
   filterTextActive: { color: "#15803D" },
-
-  card: {
-    backgroundColor: "#fff",
-    margin: 16,
-    padding: 16,
-    borderRadius: 16,
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
+  card: { backgroundColor: "#fff", margin: 16, padding: 16, borderRadius: 16 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between" },
   name: { fontSize: 16, fontWeight: "700" },
-
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, fontWeight: "700", fontSize: 12 },
   paid: { backgroundColor: "#DCFCE7", color: "#15803D" },
   partial: { backgroundColor: "#FEF3C7", color: "#92400E" },
   unpaid: { backgroundColor: "#FEE2E2", color: "#DC2626" },
-
   meta: { marginTop: 4 },
-
-  summaryCard: {
-    backgroundColor: "#fff",
-    margin: 16,
-    padding: 16,
-    borderRadius: 16,
-  },
-
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
+  summaryCard: { backgroundColor: "#fff", margin: 16, padding: 16, borderRadius: 16 },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between" },
   summaryLabel: { fontWeight: "700" },
   summaryValue: { fontWeight: "700" },
-
-  fab: {
-    position: "absolute",
-    right: 30,
-    bottom: 135,
-    backgroundColor: "#2E7D32",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  modalBg: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    padding: 20,
-  },
-
-  modal: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-  },
-
+  fab: { position: "absolute", right: 30, bottom: 135, backgroundColor: "#2E7D32", width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", padding: 20 },
+  modal: { backgroundColor: "#fff", borderRadius: 16, padding: 16 },
   modalTitle: { fontWeight: "700", marginBottom: 10 },
+  input: { borderWidth: 1, borderRadius: 10, padding: 12, marginTop: 10 },
+  paymentRow: { flexDirection: "row", marginTop: 10 },
+  payBtn: { flex: 1, padding: 12, marginHorizontal: 4, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  payBtnActive: { backgroundColor: "#DCFCE7", borderColor: "#16A34A" },
+  saveBtn: { backgroundColor: "#2E7D32", padding: 14, borderRadius: 12, alignItems: "center", marginTop: 14 },
 
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 10,
-  },
-
-  paymentRow: {
-    flexDirection: "row",
-    marginTop: 10,
-  },
-
-  payBtn: {
-    flex: 1,
-    padding: 12,
-    marginHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-
-  payBtnActive: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#16A34A",
-  },
-
-  saveBtn: {
-    backgroundColor: "#2E7D32",
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 14,
-  },
+  actionRow: { flexDirection: "row", marginTop: 10 },
+  smsBtn: { flex: 1, padding: 10, marginRight: 6, borderRadius: 10, backgroundColor: "#EEF2FF", alignItems: "center" },
+  waBtn: { flex: 1, padding: 10, marginLeft: 6, borderRadius: 10, backgroundColor: "#DCFCE7", alignItems: "center" },
+  smsText: { fontWeight: "700", color: "#3730A3" },
+  waText: { fontWeight: "700", color: "#15803D" },
 });
