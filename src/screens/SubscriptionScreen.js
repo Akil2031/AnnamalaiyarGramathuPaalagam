@@ -621,12 +621,21 @@ const statusCounts = useMemo(() => {
               ))}
             </View>
 
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={saveSubscription}
-            >
-              <Text style={{ color: "#fff" }}>Save</Text>
-            </TouchableOpacity>
+            {/* CANCEL */}
+<TouchableOpacity
+  style={[styles.saveBtn, { backgroundColor: "#CBD5E1" }]}
+  onPress={() => setModalVisible(false)}
+>
+  <Text style={{ color: "#111", fontWeight: "700" }}>Cancel</Text>
+</TouchableOpacity>
+
+{/* SAVE */}
+<TouchableOpacity
+  style={styles.saveBtn}
+  onPress={saveSubscription}
+>
+  <Text style={{ color: "#fff" }}>Save</Text>
+</TouchableOpacity>
           </View>
         </View>
       </Modal>
