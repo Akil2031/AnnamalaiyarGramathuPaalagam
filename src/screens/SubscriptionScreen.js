@@ -531,22 +531,34 @@ const statusCounts = useMemo(() => {
               {editingSub ? "Edit" : "Add"} Subscription
             </Text>
 
-            {!editingSub &&
-              customers
-                .filter(
-                  (c) =>
-                    !subscriptions.some(
-                      (s) => s.customerId === c.id
-                    )
-                )
-                .map((c) => (
-                  <TouchableOpacity
-                    key={c.id}
-                    onPress={() => setSelectedCustomer(c)}
-                  >
-                    <Text>{c.name}</Text>
-                  </TouchableOpacity>
-                ))}
+            {!editingSub && (
+  <FlatList
+    style={{ maxHeight: 200, marginBottom: 10 }}
+    data={customers.filter(
+      (c) => !subscriptions.some((s) => s.customerId === c.id)
+    )}
+    keyExtractor={(item) => item.id}
+    renderItem={({ item }) => (
+      <TouchableOpacity
+        style={{
+          paddingVertical: 6,
+          borderBottomWidth: 0.5,
+          borderColor: "#E5E7EB",
+        }}
+        onPress={() => setSelectedCustomer(item)}
+      >
+        <Text
+          style={{
+            fontWeight: selectedCustomer?.id === item.id ? "700" : "400",
+            color: selectedCustomer?.id === item.id ? "#16A34A" : "#000",
+          }}
+        >
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    )}
+  />
+)}
 
             <TextInput
               style={styles.input}
