@@ -84,6 +84,12 @@ const openSMS = (mobile, message) => {
 
 const getDeliveryStats = async (customerId, month, subscriptionEndDate) => {
   const monthStart = `${month}-01`;
+    const currentMonth = todayStr.slice(0, 7);
+
+    /* ✅ FUTURE MONTH GUARD */
+  if (month > currentMonth) {
+    return { missed: 0, possibleDays: 0 };
+  }
 
   let monthEnd = month === todayStr.slice(0, 7) ? todayStr : `${month}-31`;
 
