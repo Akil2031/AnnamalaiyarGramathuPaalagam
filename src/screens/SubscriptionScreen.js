@@ -299,14 +299,8 @@ export default function SubscriptionScreen() {
     setEndDate(sub.endDate ? new Date(sub.endDate) : null);
     setModalVisible(true);
   };
-
-  const saveSubscription = async () => {
-    if (!selectedCustomer || !quantityPerDay || !pricePerLitre || !plannedDays) {
-      Alert.alert("Fill all required fields");
-      return;
-    }
-
-    const deleteSubscription = async (id) => {
+  
+   const deleteSubscription = async (id) => {
   Alert.alert(
     "Delete Subscription?",
     "This action cannot be undone.",
@@ -322,6 +316,14 @@ export default function SubscriptionScreen() {
     ]
   );
 };
+
+  const saveSubscription = async () => {
+    if (!selectedCustomer || !quantityPerDay || !pricePerLitre || !plannedDays) {
+      Alert.alert("Fill all required fields");
+      return;
+    }
+
+   
 
     const payload = {
       customerId: selectedCustomer.id,
@@ -423,23 +425,32 @@ export default function SubscriptionScreen() {
         keyExtractor={(i) => i.id}
         contentContainerStyle={{ paddingBottom: 140 }}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => openEdit(item)}>
+          <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.name}>{item.customerName}</Text>
-              <Text
-                style={[
-                  styles.badge,
-                  item.paymentStatus === "paid"
-                    ? styles.paid
-                    : item.paymentStatus === "partial"
-                    ? styles.partial
-                    : styles.unpaid,
-                ]}
-              >
-                {item.paymentStatus.toUpperCase()}
-              </Text>
-            </View>
+  <Text style={styles.name}>{item.customerName}</Text>
 
+  <View style={{ flexDirection: "row", alignItems: "center" }}>
+    <Text
+      style={[
+        styles.badge,
+        item.paymentStatus === "paid"
+          ? styles.paid
+          : item.paymentStatus === "partial"
+          ? styles.partial
+          : styles.unpaid,
+      ]}
+    >
+      {item.paymentStatus.toUpperCase()}
+    </Text>
+
+    <TouchableOpacity
+      style={styles.editBtn}
+      onPress={() => openEdit(item)}
+    >
+      <Text style={styles.editText}>✏</Text>
+    </TouchableOpacity>
+  </View>
+</View>
             <Text style={styles.meta}>Delivered: {item.deliveredDays}/{item.plannedDays}</Text>
             <Text style={styles.meta}>Expected ₹ {item.plannedAmount.toFixed(2)}</Text>
             <Text style={styles.meta}>Consumed ₹ {item.actualAmount.toFixed(2)}</Text>
@@ -493,7 +504,7 @@ export default function SubscriptionScreen() {
 
   </View>
 )}
-          </TouchableOpacity>
+          </View>
         )}
       />
 
@@ -660,6 +671,18 @@ deleteBtn: {
   borderRadius: 10,
   backgroundColor: "#FEE2E2",
   alignItems: "center",
+},
+
+editBtn: {
+  marginLeft: 8,
+  padding: 6,
+  borderRadius: 8,
+  backgroundColor: "#E0F2FE",
+},
+
+editText: {
+  fontWeight: "700",
+  color: "#0369A1",
 },
 
 deleteText: {
