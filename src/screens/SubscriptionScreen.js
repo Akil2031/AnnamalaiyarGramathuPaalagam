@@ -58,7 +58,7 @@ Your milk subscription for ${monthLabel(
   )} is created.
 
 Qty/day: ${sub.quantityPerDay} L
-Price per: ₹${sub.pricePerLitre}
+Price per litre: ₹${sub.pricePerLitre}
 Days: ${sub.plannedDays}
 
 Total Amount: ₹${total}
