@@ -19,6 +19,7 @@ import {
   collection,
   addDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   query,
   where,
@@ -57,7 +58,7 @@ Your milk subscription for ${monthLabel(
   )} is created.
 
 Qty/day: ${sub.quantityPerDay} L
-Price: ₹${sub.pricePerLitre}
+Price per: ₹${sub.pricePerLitre}
 Days: ${sub.plannedDays}
 
 Total Amount: ₹${total}
@@ -78,6 +79,11 @@ const openSMS = (mobile, message) => {
   if (!mobile) return;
   const url = `sms:${mobile}?body=${encodeURIComponent(message)}`;
   Linking.openURL(url);
+};
+
+const makeCall = (mobile) => {
+  if (!mobile) return;
+  Linking.openURL(`tel:${mobile}`);
 };
 
 /* ---------- DELIVERY STATS ---------- */
@@ -187,17 +193,33 @@ export default function SubscriptionScreen() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "deliveries"), async () => {
       for (const sub of subscriptions) {
-        const { missed, possibleDays } = await getDeliveryStats(sub.customerId, sub.month, sub.endDate);
 
-        const delivered = Math.max(Math.min(possibleDays, sub.plannedDays) - missed, 0);
+  const currentMonth = todayStr.slice(0, 7);
 
-        const perDay = sub.quantityPerDay * sub.pricePerLitre;
+  /* ✅ FUTURE MONTH HARD STOP */
+  if (sub.month > currentMonth) {
+    await updateDoc(doc(db, "subscriptions", sub.id), {
+      deliveredDays: 0,
+      skippedDays: 0,
+      actualAmount: 0,
+      balanceAmount: 0,
+      carryForwardAmount: sub.paidAmount || 0,
+      paymentStatus: sub.paidAmount > 0 ? "paid" : "pending",
+    });
+    continue;
+  }
 
-        const plannedAmount = sub.plannedDays * perDay;
-        const actualAmount = delivered * perDay;
-        const paid = sub.paidAmount || 0;
+  const { missed, possibleDays } = await getDeliveryStats(sub.customerId, sub.month, sub.endDate);
 
-        await updateDoc(doc(db, "subscriptions", sub.id), {
+  const delivered = Math.max(Math.min(possibleDays, sub.plannedDays) - missed, 0);
+
+  const perDay = sub.quantityPerDay * sub.pricePerLitre;
+
+  const plannedAmount = sub.plannedDays * perDay;
+  const actualAmount = delivered * perDay;
+  const paid = sub.paidAmount || 0;
+
+  await updateDoc(doc(db, "subscriptions", sub.id), {
           deliveredDays: delivered,
           skippedDays: missed,
           plannedAmount,
@@ -283,6 +305,23 @@ export default function SubscriptionScreen() {
       Alert.alert("Fill all required fields");
       return;
     }
+
+    const deleteSubscription = async (id) => {
+  Alert.alert(
+    "Delete Subscription?",
+    "This action cannot be undone.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await deleteDoc(doc(db, "subscriptions", id));
+        },
+      },
+    ]
+  );
+};
 
     const payload = {
       customerId: selectedCustomer.id,
@@ -406,6 +445,10 @@ export default function SubscriptionScreen() {
             <Text style={styles.meta}>Consumed ₹ {item.actualAmount.toFixed(2)}</Text>
             <Text style={styles.meta}>Paid ₹ {item.paidAmount.toFixed(2)}</Text>
 
+            {item.mobile && (
+            <Text style={styles.meta}>📞 {item.mobile}</Text>
+              )}
+
             {item.endDate && (
               <Text style={styles.meta}>Ends on: {new Date(item.endDate).toLocaleDateString("en-IN")}</Text>
             )}
@@ -417,23 +460,39 @@ export default function SubscriptionScreen() {
             )}
 
             {/* ACTION BUTTONS */}
-            {item.mobile && (
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.smsBtn}
-                  onPress={() => openSMS(item.mobile, buildSubscriptionMessage(item))}
-                >
-                  <Text style={styles.smsText}>✉ SMS</Text>
-                </TouchableOpacity>
+           {item.mobile && (
+  <View style={styles.actionRow}>
 
-                <TouchableOpacity
-                  style={styles.waBtn}
-                  onPress={() => openWhatsApp(item.mobile, buildSubscriptionMessage(item))}
-                >
-                  <Text style={styles.waText}>🟢 WhatsApp</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+    <TouchableOpacity
+      style={styles.callBtn}
+      onPress={() => makeCall(item.mobile)}
+    >
+      <Text style={styles.callText}>📞 Call</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.smsBtn}
+      onPress={() => openSMS(item.mobile, buildSubscriptionMessage(item))}
+    >
+      <Text style={styles.smsText}>✉ SMS</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.waBtn}
+      onPress={() => openWhatsApp(item.mobile, buildSubscriptionMessage(item))}
+    >
+      <Text style={styles.waText}>🟢 WhatsApp</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.deleteBtn}
+      onPress={() => deleteSubscription(item.id)}
+    >
+      <Text style={styles.deleteText}>🗑 Delete</Text>
+    </TouchableOpacity>
+
+  </View>
+)}
           </TouchableOpacity>
         )}
       />
@@ -580,4 +639,31 @@ const styles = StyleSheet.create({
   waBtn: { flex: 1, padding: 10, marginLeft: 6, borderRadius: 10, backgroundColor: "#DCFCE7", alignItems: "center" },
   smsText: { fontWeight: "700", color: "#3730A3" },
   waText: { fontWeight: "700", color: "#15803D" },
+  callBtn: {
+  flex: 1,
+  padding: 10,
+  marginRight: 6,
+  borderRadius: 10,
+  backgroundColor: "#E0F2FE",
+  alignItems: "center",
+},
+
+callText: {
+  fontWeight: "700",
+  color: "#0369A1",
+},
+
+deleteBtn: {
+  flex: 1,
+  padding: 10,
+  marginLeft: 6,
+  borderRadius: 10,
+  backgroundColor: "#FEE2E2",
+  alignItems: "center",
+},
+
+deleteText: {
+  fontWeight: "700",
+  color: "#DC2626",
+},
 });
