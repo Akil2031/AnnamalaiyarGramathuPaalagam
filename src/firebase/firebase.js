@@ -1,18 +1,21 @@
+// src/firebase/firebase.js
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBrkyWhvKanLK1kgE0roZ3EeSiZhSWJqtE",
-  authDomain: "milk-subscription-app.firebaseapp.com",
-  projectId: "milk-subscription-app",
-  storageBucket: "milk-subscription-app.firebasestorage.app",
-  messagingSenderId: "295803708577",
-  appId: "1:295803708577:web:5627fdfdcbe9917890fce0"
+  apiKey: "AIzaSyCNxCgXt7SGUhXS-ExrI2R5R9cUF6nSdsU",
+  authDomain: "ghee-sales.firebaseapp.com",
+  projectId: "ghee-sales",
+  storageBucket: "ghee-sales.firebasestorage.app",
+  messagingSenderId: "330621126643",
+  appId: "1:330621126643:web:7bcf15e2ae5c5a31a1b486",
 };
-
 
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+export default app;

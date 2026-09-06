@@ -1,11 +1,23 @@
-export const colors = {
-  primary: "#2E7D32",        // Trust green
-  background: "#F8FAFC",     // App background
-  card: "#FFFFFF",           // Cards
-  textPrimary: "#0F172A",    // Headings
-  textSecondary: "#64748B",  // Meta text
-  border: "#E2E8F0",         // Subtle dividers
-  danger: "#DC2626",         // Delete / remove
-  warning: "#F59E0B",
-  success: "#16A34A",
+const colors = {
+  primary: "#8FCF54",
+  dark: "#151B1F",
+  charcoal: "#374148",
+  lightGreen: "#E8F7D0",
+
+  background: "#F7FAF5",
+  card: "#FFFFFF",
+
+  textPrimary: "#151B1F",
+  textSecondary: "#68737A",
+
+  border: "#DDE5DD",
+
+  success: "#66B539",
+  warning: "#E5A82F",
+  danger: "#D9534F",
+
+  white: "#FFFFFF",
+  black: "#000000",
 };
+
+export default colors;
