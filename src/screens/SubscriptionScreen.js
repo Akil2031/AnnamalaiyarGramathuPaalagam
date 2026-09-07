@@ -5,17 +5,18 @@ import { Ionicons } from "@expo/vector-icons";
 
 import {
   View,
-  Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
   Modal,
   TextInput,
   Alert,
-  StatusBar,
   ScrollView,
 } from "react-native";
 
+import AppText from "../components/AppText";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ---------- CUSTOMER SCREEN VISUAL SYSTEM ---------- */
 const UI = {
@@ -189,10 +190,10 @@ function SummaryMetric({ icon, label, value, tone = "default", compact }) {
         <Ionicons name={icon} size={19} color={fg} />
       </View>
       <View style={styles.metricContent}>
-        <Text style={styles.metricLabel}>{label}</Text>
-        <Text style={[styles.metricValue, { color: fg }]} numberOfLines={1}>
+        <AppText style={styles.metricLabel}>{label}</AppText>
+        <AppText style={[styles.metricValue, { color: fg }]} numberOfLines={1}>
           {money(value)}
-        </Text>
+        </AppText>
       </View>
     </View>
   );
@@ -207,7 +208,7 @@ function StatusBadge({ status }) {
   return (
     <View style={[styles.statusBadge, { backgroundColor: bg }]}>
       <View style={[styles.statusDot, { backgroundColor: fg }]} />
-      <Text style={[styles.statusText, { color: fg }]}>{label}</Text>
+      <AppText style={[styles.statusText, { color: fg }]}>{label}</AppText>
     </View>
   );
 }
@@ -219,9 +220,9 @@ function FilterChip({ label, active, onPress }) {
       onPress={onPress}
       style={[styles.filterChip, active && styles.filterChipActive]}
     >
-      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+      <AppText style={[styles.filterChipText, active && styles.filterChipTextActive]}>
         {label}
-      </Text>
+      </AppText>
     </TouchableOpacity>
   );
 }
@@ -238,7 +239,7 @@ function ActionButton({ label, icon, onPress, variant = "neutral" }) {
   return (
     <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={[styles.actionButton, { backgroundColor: bg }]}>
       <Ionicons name={icon} size={15} color={fg} />
-      <Text style={[styles.actionLabel, { color: fg }]}>{label}</Text>
+      <AppText style={[styles.actionLabel, { color: fg }]}>{label}</AppText>
     </TouchableOpacity>
   );
 }
@@ -247,16 +248,16 @@ function DetailItem({ label, value, emphasis = false, tone = "default" }) {
   const fg = tone === "danger" ? UI.danger : tone === "success" ? UI.greenDark : UI.text;
   return (
     <View style={styles.detailItem}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={[styles.detailValue, emphasis && styles.detailValueEmphasis, { color: fg }]} numberOfLines={1}>
+      <AppText style={styles.detailLabel}>{label}</AppText>
+      <AppText style={[styles.detailValue, emphasis && styles.detailValueEmphasis, { color: fg }]} numberOfLines={1}>
         {value}
-      </Text>
+      </AppText>
     </View>
   );
 }
 
 function FieldLabel({ children }) {
-  return <Text style={styles.fieldLabel}>{children}</Text>;
+  return <AppText style={styles.fieldLabel}>{children}</AppText>;
 }
 
 /* Top-level on purpose: prevents React Native Web from remounting the search input while typing. */
@@ -743,15 +744,15 @@ export default function SubscriptionScreen() {
         <View style={styles.cardTop}>
           <View style={styles.customerIdentity}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials || "?"}</Text>
+              <AppText style={styles.avatarText}>{initials || "?"}</AppText>
             </View>
 
             <View style={styles.identityText}>
-              <Text style={styles.customerName} numberOfLines={1}>{item.customerName}</Text>
+              <AppText style={styles.customerName} numberOfLines={1}>{item.customerName}</AppText>
               {!!item.mobile && (
                 <View style={styles.mobileLine}>
                   <Ionicons name="call" size={12} color={UI.greenDark} />
-                  <Text style={styles.customerMobile}>{item.mobile}</Text>
+                  <AppText style={styles.customerMobile}>{item.mobile}</AppText>
                 </View>
               )}
             </View>
@@ -767,18 +768,18 @@ export default function SubscriptionScreen() {
 
         <View style={styles.planStrip}>
           <View style={styles.planMain}>
-            <Text style={styles.planValue}>{item.quantityPerDay} L</Text>
-            <Text style={styles.planLabel}>DAILY QUANTITY</Text>
+            <AppText style={styles.planValue}>{item.quantityPerDay} L</AppText>
+            <AppText style={styles.planLabel}>DAILY QUANTITY</AppText>
           </View>
           <View style={styles.planDivider} />
           <View style={styles.planMain}>
-            <Text style={styles.planValue}>{money(perDay)}</Text>
-            <Text style={styles.planLabel}>PER DAY</Text>
+            <AppText style={styles.planValue}>{money(perDay)}</AppText>
+            <AppText style={styles.planLabel}>PER DAY</AppText>
           </View>
           <View style={styles.planDivider} />
           <View style={styles.planMain}>
-            <Text style={styles.planValue}>{item.plannedDays}</Text>
-            <Text style={styles.planLabel}>PLANNED DAYS</Text>
+            <AppText style={styles.planValue}>{item.plannedDays}</AppText>
+            <AppText style={styles.planLabel}>PLANNED DAYS</AppText>
           </View>
         </View>
 
@@ -786,9 +787,9 @@ export default function SubscriptionScreen() {
           <View style={styles.progressHeader}>
             <View style={styles.progressTitleRow}>
               <Ionicons name="bicycle-outline" size={14} color={UI.greenDark} />
-              <Text style={styles.progressTitle}>Delivery progress</Text>
+              <AppText style={styles.progressTitle}>Delivery progress</AppText>
             </View>
-            <Text style={styles.progressValue}>{item.deliveredDays || 0}/{item.plannedDays || 0} days</Text>
+            <AppText style={styles.progressValue}>{item.deliveredDays || 0}/{item.plannedDays || 0} days</AppText>
           </View>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
@@ -805,30 +806,30 @@ export default function SubscriptionScreen() {
         <View style={styles.secondaryInfo}>
           <View style={styles.infoPill}>
             <Ionicons name="remove-circle-outline" size={12} color={UI.secondary} />
-            <Text style={styles.infoPillText}>{item.skippedDays || 0} missed</Text>
+            <AppText style={styles.infoPillText}>{item.skippedDays || 0} missed</AppText>
           </View>
 
           {Number(item.carryForwardAmount || 0) > 0 && (
             <View style={[styles.infoPill, styles.carryPill]}>
               <Ionicons name="arrow-forward-circle-outline" size={12} color={UI.warning} />
-              <Text style={[styles.infoPillText, styles.carryPillText]}>{money(item.carryForwardAmount)} carry</Text>
+              <AppText style={[styles.infoPillText, styles.carryPillText]}>{money(item.carryForwardAmount)} carry</AppText>
             </View>
           )}
 
           {item.endDate && (
             <View style={styles.infoPill}>
               <Ionicons name="calendar-outline" size={12} color={UI.secondary} />
-              <Text style={styles.infoPillText}>Ends {new Date(item.endDate).toLocaleDateString("en-IN")}</Text>
+              <AppText style={styles.infoPillText}>Ends {new Date(item.endDate).toLocaleDateString("en-IN")}</AppText>
             </View>
           )}
 
           {item.paymentStatus !== "pending" && item.paymentMode && (
             <View style={styles.infoPill}>
               <Ionicons name={item.paymentMode === "cash" ? "cash-outline" : "card-outline"} size={12} color={UI.secondary} />
-              <Text style={styles.infoPillText}>
+              <AppText style={styles.infoPillText}>
                 {item.paymentMode.toUpperCase()}
                 {item.paymentDate ? ` · ${new Date(item.paymentDate).toLocaleDateString("en-IN")}` : ""}
-              </Text>
+              </AppText>
             </View>
           )}
         </View>
@@ -854,14 +855,14 @@ export default function SubscriptionScreen() {
             </View>
 
             <View style={styles.headerText}>
-              <Text style={styles.pageTitle}>Subscriptions</Text>
-              <Text style={styles.pageSubtitle}>Manage monthly plans, deliveries and payments</Text>
+              <AppText style={styles.pageTitle}>Subscriptions</AppText>
+              <AppText style={styles.pageSubtitle}>Manage monthly plans, deliveries and payments</AppText>
               {!isMobile && (
                 <View style={styles.headerMeta}>
                   <View style={styles.headerDot} />
-                  <Text style={styles.headerMetaText}>{subscriptionCount} subscriptions</Text>
-                  <Text style={styles.headerBullet}>•</Text>
-                  <Text style={styles.headerMetaText}>{monthLabel(selectedMonth)}</Text>
+                  <AppText style={styles.headerMetaText}>{subscriptionCount} subscriptions</AppText>
+                  <AppText style={styles.headerBullet}>•</AppText>
+                  <AppText style={styles.headerMetaText}>{monthLabel(selectedMonth)}</AppText>
                 </View>
               )}
             </View>
@@ -869,7 +870,7 @@ export default function SubscriptionScreen() {
             {!isMobile && (
               <TouchableOpacity activeOpacity={0.85} onPress={openAdd} style={styles.addButton}>
                 <Ionicons name="add" size={19} color="#FFFFFF" />
-                <Text style={styles.addButtonText}>New Subscription</Text>
+                <AppText style={styles.addButtonText}>New Subscription</AppText>
               </TouchableOpacity>
             )}
           </View>
@@ -877,8 +878,8 @@ export default function SubscriptionScreen() {
 
         <View style={styles.monthCard}>
           <View>
-            <Text style={styles.monthEyebrow}>BILLING MONTH</Text>
-            <Text style={styles.monthHeading}>{monthLabel(selectedMonth)}</Text>
+            <AppText style={styles.monthEyebrow}>BILLING MONTH</AppText>
+            <AppText style={styles.monthHeading}>{monthLabel(selectedMonth)}</AppText>
           </View>
 
           <View style={styles.monthControls}>
@@ -886,7 +887,7 @@ export default function SubscriptionScreen() {
               <Ionicons name="chevron-back" size={17} color={UI.greenDark} />
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.8} onPress={() => setSelectedMonth(formatMonth(new Date()))} style={styles.todayButton}>
-              <Text style={styles.todayButtonText}>Today</Text>
+              <AppText style={styles.todayButtonText}>Today</AppText>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.8} onPress={() => moveMonth(1)} style={styles.monthButton}>
               <Ionicons name="chevron-forward" size={17} color={UI.greenDark} />
@@ -912,15 +913,15 @@ export default function SubscriptionScreen() {
 
         <View style={styles.resultHeader}>
           <View>
-            <Text style={styles.resultTitle}>Monthly subscriptions</Text>
-            <Text style={styles.resultSubtitle}>
+            <AppText style={styles.resultTitle}>Monthly subscriptions</AppText>
+            <AppText style={styles.resultSubtitle}>
               {subscriptionCount} {subscriptionCount === 1 ? "customer" : "customers"} shown
-            </Text>
+            </AppText>
           </View>
           <View style={styles.resultBadge}>
-            <Text style={styles.resultBadgeText}>
+            <AppText style={styles.resultBadgeText}>
               {paymentFilter === "all" ? "ALL" : paymentFilter === "pending" ? "UNPAID" : paymentFilter.toUpperCase()}
-            </Text>
+            </AppText>
           </View>
         </View>
       </View>
@@ -928,10 +929,12 @@ export default function SubscriptionScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor={UI.greenDeep} barStyle="light-content" />
-
-      <FlatList
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={isMobile ? ["top"] : []}
+    >
+      <View style={styles.container}>
+        <FlatList
         data={filteredSubscriptions}
         keyExtractor={(item) => item.id}
         renderItem={renderSubscription}
@@ -946,16 +949,16 @@ export default function SubscriptionScreen() {
               <View style={styles.emptyIcon}>
                 <Ionicons name="repeat-outline" size={29} color={UI.greenDark} />
               </View>
-              <Text style={styles.emptyTitle}>No subscriptions found</Text>
-              <Text style={styles.emptyText}>
+              <AppText style={styles.emptyTitle}>No subscriptions found</AppText>
+              <AppText style={styles.emptyText}>
                 {search || paymentFilter !== "all"
                   ? "Try changing the search or payment filter."
                   : `No subscription is available for ${monthLabel(selectedMonth)}.`}
-              </Text>
+              </AppText>
               {!search && paymentFilter === "all" && (
                 <TouchableOpacity activeOpacity={0.85} onPress={openAdd} style={styles.emptyButton}>
                   <Ionicons name="add" size={18} color="#FFFFFF" />
-                  <Text style={styles.emptyButtonText}>Add Subscription</Text>
+                  <AppText style={styles.emptyButtonText}>Add Subscription</AppText>
                 </TouchableOpacity>
               )}
             </View>
@@ -975,19 +978,19 @@ export default function SubscriptionScreen() {
             <View style={styles.deleteModalIcon}>
               <Ionicons name="trash-outline" size={25} color={UI.danger} />
             </View>
-            <Text style={styles.deleteModalTitle}>Delete subscription?</Text>
-            <Text style={styles.deleteModalText}>
+            <AppText style={styles.deleteModalTitle}>Delete subscription?</AppText>
+            <AppText style={styles.deleteModalText}>
               {deleteTarget?.customerName
                 ? `This will permanently remove ${deleteTarget.customerName}'s subscription for ${monthLabel(selectedMonth)}.`
                 : "This action cannot be undone."}
-            </Text>
+            </AppText>
             <View style={styles.deleteModalActions}>
               <TouchableOpacity disabled={deleteBusy} onPress={() => setDeleteTarget(null)} style={styles.deleteCancelButton}>
-                <Text style={styles.deleteCancelText}>Cancel</Text>
+                <AppText style={styles.deleteCancelText}>Cancel</AppText>
               </TouchableOpacity>
               <TouchableOpacity disabled={deleteBusy} onPress={() => confirmDeleteSubscription(deleteTarget)} style={[styles.deleteConfirmButton, deleteBusy && styles.deleteButtonDisabled]}>
                 <Ionicons name="trash-outline" size={15} color="#FFFFFF" />
-                <Text style={styles.deleteConfirmText}>{deleteBusy ? "Deleting..." : "Delete Subscription"}</Text>
+                <AppText style={styles.deleteConfirmText}>{deleteBusy ? "Deleting..." : "Delete Subscription"}</AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -1013,14 +1016,14 @@ export default function SubscriptionScreen() {
           >
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalEyebrow}>
+                <AppText style={styles.modalEyebrow}>
                   {editingSub ? "UPDATE PLAN" : "NEW PLAN"}
-                </Text>
-                <Text style={styles.modalTitle}>
+                </AppText>
+                <AppText style={styles.modalTitle}>
                   {editingSub
                     ? "Edit Subscription"
                     : "Create Subscription"}
-                </Text>
+                </AppText>
               </View>
 
               <TouchableOpacity
@@ -1028,9 +1031,9 @@ export default function SubscriptionScreen() {
                 onPress={closeModal}
                 style={styles.modalClose}
               >
-                <Text style={styles.modalCloseText}>
+                <AppText style={styles.modalCloseText}>
                   ×
-                </Text>
+                </AppText>
               </TouchableOpacity>
             </View>
 
@@ -1042,19 +1045,19 @@ export default function SubscriptionScreen() {
             >
               {/* CUSTOMER */}
               <View style={styles.formSection}>
-                <Text style={styles.sectionTitle}>
+                <AppText style={styles.sectionTitle}>
                   Customer
-                </Text>
-                <Text style={styles.sectionHint}>
+                </AppText>
+                <AppText style={styles.sectionHint}>
                   Choose an active customer for this month
-                </Text>
+                </AppText>
 
                 {!editingSub && (
                   <>
                     <View style={styles.modalSearchBox}>
-                      <Text style={styles.modalSearchIcon}>
+                      <AppText style={styles.modalSearchIcon}>
                         ⌕
-                      </Text>
+                      </AppText>
                       <TextInput
                         style={styles.modalSearchInput}
                         placeholder="Search customer by name or mobile"
@@ -1068,11 +1071,11 @@ export default function SubscriptionScreen() {
                     <View style={styles.customerList}>
                       {selectedCustomerOptions.length ===
                       0 ? (
-                        <Text
+                        <AppText
                           style={styles.noCustomerText}
                         >
                           No available customers found.
-                        </Text>
+                        </AppText>
                       ) : (
                         selectedCustomerOptions
                           .slice(0, 8)
@@ -1103,7 +1106,7 @@ export default function SubscriptionScreen() {
                                       styles.customerOptionAvatarActive,
                                   ]}
                                 >
-                                  <Text
+                                  <AppText
                                     style={[
                                       styles.customerOptionAvatarText,
                                       active &&
@@ -1116,7 +1119,7 @@ export default function SubscriptionScreen() {
                                       .trim()
                                       .charAt(0)
                                       .toUpperCase()}
-                                  </Text>
+                                  </AppText>
                                 </View>
 
                                 <View
@@ -1124,7 +1127,7 @@ export default function SubscriptionScreen() {
                                     styles.customerOptionText
                                   }
                                 >
-                                  <Text
+                                  <AppText
                                     style={[
                                       styles.customerOptionName,
                                       active &&
@@ -1133,15 +1136,15 @@ export default function SubscriptionScreen() {
                                     numberOfLines={1}
                                   >
                                     {customer.name}
-                                  </Text>
+                                  </AppText>
                                   {!!customer.mobile && (
-                                    <Text
+                                    <AppText
                                       style={
                                         styles.customerOptionMobile
                                       }
                                     >
                                       {customer.mobile}
-                                    </Text>
+                                    </AppText>
                                   )}
                                 </View>
 
@@ -1171,7 +1174,7 @@ export default function SubscriptionScreen() {
                 {editingSub && selectedCustomer && (
                   <View style={styles.selectedCustomerCard}>
                     <View style={styles.customerOptionAvatar}>
-                      <Text
+                      <AppText
                         style={
                           styles.customerOptionAvatarText
                         }
@@ -1182,25 +1185,25 @@ export default function SubscriptionScreen() {
                           .trim()
                           .charAt(0)
                           .toUpperCase()}
-                      </Text>
+                      </AppText>
                     </View>
 
                     <View
                       style={styles.customerOptionText}
                     >
-                      <Text
+                      <AppText
                         style={styles.customerOptionName}
                       >
                         {selectedCustomer.name}
-                      </Text>
+                      </AppText>
                       {!!selectedCustomer.mobile && (
-                        <Text
+                        <AppText
                           style={
                             styles.customerOptionMobile
                           }
                         >
                           {selectedCustomer.mobile}
-                        </Text>
+                        </AppText>
                       )}
                     </View>
                   </View>
@@ -1209,12 +1212,12 @@ export default function SubscriptionScreen() {
 
               {/* PLAN */}
               <View style={styles.formSection}>
-                <Text style={styles.sectionTitle}>
+                <AppText style={styles.sectionTitle}>
                   Subscription plan
-                </Text>
-                <Text style={styles.sectionHint}>
+                </AppText>
+                <AppText style={styles.sectionHint}>
                   Set the daily quantity, price and planned days
-                </Text>
+                </AppText>
 
                 <View
                   style={[
@@ -1282,7 +1285,7 @@ export default function SubscriptionScreen() {
                         setShowEndPicker(true)
                       }
                     >
-                      <Text
+                      <AppText
                         style={[
                           styles.dateInputText,
                           !endDate &&
@@ -1294,7 +1297,7 @@ export default function SubscriptionScreen() {
                               "en-IN"
                             )
                           : "Select end date"}
-                      </Text>
+                      </AppText>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1322,12 +1325,12 @@ export default function SubscriptionScreen() {
 
               {/* PAYMENT */}
               <View style={styles.formSection}>
-                <Text style={styles.sectionTitle}>
+                <AppText style={styles.sectionTitle}>
                   Payment
-                </Text>
-                <Text style={styles.sectionHint}>
+                </AppText>
+                <AppText style={styles.sectionHint}>
                   Record any amount collected for this subscription
-                </Text>
+                </AppText>
 
                 <FieldLabel>
                   Paid amount (₹)
@@ -1364,7 +1367,7 @@ export default function SubscriptionScreen() {
                             styles.paymentModeButtonActive,
                         ]}
                       >
-                        <Text
+                        <AppText
                           style={[
                             styles.paymentModeIcon,
                             active &&
@@ -1374,8 +1377,8 @@ export default function SubscriptionScreen() {
                           {mode === "cash"
                             ? "₹"
                             : "↗"}
-                        </Text>
-                        <Text
+                        </AppText>
+                        <AppText
                           style={[
                             styles.paymentModeText,
                             active &&
@@ -1385,7 +1388,7 @@ export default function SubscriptionScreen() {
                           {mode === "cash"
                             ? "Cash"
                             : "Online"}
-                        </Text>
+                        </AppText>
                       </TouchableOpacity>
                     );
                   })}
@@ -1395,23 +1398,23 @@ export default function SubscriptionScreen() {
               {/* LIVE PREVIEW */}
               <View style={styles.previewCard}>
                 <View>
-                  <Text style={styles.previewEyebrow}>
+                  <AppText style={styles.previewEyebrow}>
                     ESTIMATED PLAN
-                  </Text>
-                  <Text style={styles.previewTitle}>
+                  </AppText>
+                  <AppText style={styles.previewTitle}>
                     {quantityPerDay || "0"} L ×{" "}
                     {pricePerLitre || "0"} ×{" "}
                     {plannedDays || "0"} days
-                  </Text>
+                  </AppText>
                 </View>
 
-                <Text style={styles.previewAmount}>
+                <AppText style={styles.previewAmount}>
                   {money(
                     Number(quantityPerDay || 0) *
                       Number(pricePerLitre || 0) *
                       Number(plannedDays || 0)
                   )}
-                </Text>
+                </AppText>
               </View>
 
               <View style={styles.modalActions}>
@@ -1420,9 +1423,9 @@ export default function SubscriptionScreen() {
                   onPress={closeModal}
                   style={styles.cancelButton}
                 >
-                  <Text style={styles.cancelButtonText}>
+                  <AppText style={styles.cancelButtonText}>
                     Cancel
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1430,14 +1433,14 @@ export default function SubscriptionScreen() {
                   onPress={saveSubscription}
                   style={styles.saveButton}
                 >
-                  <Text style={styles.saveButtonIcon}>
+                  <AppText style={styles.saveButtonIcon}>
                     ✓
-                  </Text>
-                  <Text style={styles.saveButtonText}>
+                  </AppText>
+                  <AppText style={styles.saveButtonText}>
                     {editingSub
                       ? "Update Subscription"
                       : "Save Subscription"}
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -1452,17 +1455,22 @@ export default function SubscriptionScreen() {
           onPress={openAdd}
           style={styles.mobileFab}
         >
-          <Text style={styles.mobileFabIcon}>＋</Text>
-          <Text style={styles.mobileFabText}>New</Text>
+          <AppText style={styles.mobileFabIcon}>＋</AppText>
+          <AppText style={styles.mobileFabText}>New</AppText>
         </TouchableOpacity>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 /* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: UI.greenDeep,
+  },
   container: { flex: 1, backgroundColor: UI.background },
 
   listContent: {

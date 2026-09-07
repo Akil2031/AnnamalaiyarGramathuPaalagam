@@ -6,7 +6,6 @@ import React, {
 
 import {
   View,
-  Text,
   TextInput,
   FlatList,
   TouchableOpacity,
@@ -17,6 +16,8 @@ import {
   KeyboardAvoidingView,
   useWindowDimensions,
 } from "react-native";
+
+import AppText from "../components/AppText";
 
 import {
   SafeAreaView,
@@ -142,14 +143,14 @@ function Toolbar({
         />
 
         {!isMobile && (
-          <Text style={styles.sortText}>
+          <AppText style={styles.sortText}>
             Sort
-          </Text>
+          </AppText>
         )}
 
-        <Text style={styles.sortValue}>
+        <AppText style={styles.sortValue}>
           {sortOrder === "asc" ? "A–Z" : "Z–A"}
-        </Text>
+        </AppText>
 
         <Ionicons
           name="chevron-down"
@@ -737,21 +738,21 @@ export default function CustomersScreen() {
             styles.statContent
           }
         >
-          <Text
+          <AppText
             style={
               styles.statLabel
             }
           >
             {label}
-          </Text>
+          </AppText>
 
-          <Text
+          <AppText
             style={
               styles.statValue
             }
           >
             {value}
-          </Text>
+          </AppText>
         </View>
       </View>
     );
@@ -793,21 +794,21 @@ export default function CustomersScreen() {
               flex: 1,
             }}
           >
-            <Text
+            <AppText
               style={
                 styles.mobileSummaryTitle
               }
             >
               Customer Overview
-            </Text>
+            </AppText>
 
-            <Text
+            <AppText
               style={
                 styles.mobileSummarySubtitle
               }
             >
               Your current customer base
-            </Text>
+            </AppText>
           </View>
         </View>
 
@@ -821,21 +822,21 @@ export default function CustomersScreen() {
               styles.mobileSummaryItem
             }
           >
-            <Text
+            <AppText
               style={
                 styles.mobileSummaryValue
               }
             >
               {stats.total}
-            </Text>
+            </AppText>
 
-            <Text
+            <AppText
               style={
                 styles.mobileSummaryLabel
               }
             >
               Total
-            </Text>
+            </AppText>
           </View>
 
           <View
@@ -849,7 +850,7 @@ export default function CustomersScreen() {
               styles.mobileSummaryItem
             }
           >
-            <Text
+            <AppText
               style={[
                 styles.mobileSummaryValue,
                 {
@@ -859,15 +860,15 @@ export default function CustomersScreen() {
               ]}
             >
               {stats.active}
-            </Text>
+            </AppText>
 
-            <Text
+            <AppText
               style={
                 styles.mobileSummaryLabel
               }
             >
               Active
-            </Text>
+            </AppText>
           </View>
 
           <View
@@ -881,7 +882,7 @@ export default function CustomersScreen() {
               styles.mobileSummaryItem
             }
           >
-            <Text
+            <AppText
               style={[
                 styles.mobileSummaryValue,
                 {
@@ -891,15 +892,15 @@ export default function CustomersScreen() {
               ]}
             >
               {stats.inactive}
-            </Text>
+            </AppText>
 
-            <Text
+            <AppText
               style={
                 styles.mobileSummaryLabel
               }
             >
               Inactive
-            </Text>
+            </AppText>
           </View>
         </View>
       </View>
@@ -942,7 +943,7 @@ export default function CustomersScreen() {
                   : styles.avatarInactive,
               ]}
             >
-              <Text
+              <AppText
                 style={[
                   styles.avatarText,
 
@@ -954,7 +955,7 @@ export default function CustomersScreen() {
                 {getInitials(
                   item.name
                 )}
-              </Text>
+              </AppText>
             </View>
 
 
@@ -968,7 +969,7 @@ export default function CustomersScreen() {
                   styles.nameRow
                 }
               >
-                <Text
+                <AppText
                   style={
                     styles.customerName
                   }
@@ -977,7 +978,7 @@ export default function CustomersScreen() {
                   }
                 >
                   {item.name}
-                </Text>
+                </AppText>
 
                 <View
                   style={[
@@ -1000,7 +1001,7 @@ export default function CustomersScreen() {
                     ]}
                   />
 
-                  <Text
+                  <AppText
                     style={[
                       styles.statusText,
                       {
@@ -1014,17 +1015,17 @@ export default function CustomersScreen() {
                     {active
                       ? "Active"
                       : "Inactive"}
-                  </Text>
+                  </AppText>
                 </View>
               </View>
 
-              <Text
+              <AppText
                 style={
                   styles.customerDescription
                 }
               >
                 Milk delivery customer
-              </Text>
+              </AppText>
             </View>
 
 
@@ -1083,15 +1084,15 @@ export default function CustomersScreen() {
                   styles.detailTextArea
                 }
               >
-                <Text
+                <AppText
                   style={
                     styles.detailLabel
                   }
                 >
                   MOBILE
-                </Text>
+                </AppText>
 
-                <Text
+                <AppText
                   style={
                     styles.detailValue
                   }
@@ -1101,7 +1102,7 @@ export default function CustomersScreen() {
                 >
                   {item.mobile ||
                     "Not provided"}
-                </Text>
+                </AppText>
               </View>
             </View>
 
@@ -1130,15 +1131,15 @@ export default function CustomersScreen() {
                   styles.detailTextArea
                 }
               >
-                <Text
+                <AppText
                   style={
                     styles.detailLabel
                   }
                 >
                   DELIVERY ADDRESS
-                </Text>
+                </AppText>
 
-                <Text
+                <AppText
                   style={
                     styles.detailValue
                   }
@@ -1150,7 +1151,7 @@ export default function CustomersScreen() {
                 >
                   {item.address ||
                     "Not provided"}
-                </Text>
+                </AppText>
               </View>
             </View>
           </View>
@@ -1190,7 +1191,7 @@ export default function CustomersScreen() {
                 }
               />
 
-              <Text
+              <AppText
                 style={
                   styles.statusActionText
                 }
@@ -1198,7 +1199,7 @@ export default function CustomersScreen() {
                 {active
                   ? "Deactivate"
                   : "Activate"}
-              </Text>
+              </AppText>
             </TouchableOpacity>
 
 
@@ -1228,13 +1229,13 @@ export default function CustomersScreen() {
                   }
                 />
 
-                <Text
+                <AppText
                   style={
                     styles.editActionText
                   }
                 >
                   Edit
-                </Text>
+                </AppText>
               </TouchableOpacity>
 
 
@@ -1259,13 +1260,13 @@ export default function CustomersScreen() {
                   }
                 />
 
-                <Text
+                <AppText
                   style={
                     styles.deleteActionText
                   }
                 >
                   Delete
-                </Text>
+                </AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -1318,15 +1319,15 @@ export default function CustomersScreen() {
               styles.headerText
             }
           >
-            <Text
+            <AppText
               style={
                 styles.pageTitle
               }
             >
               Customers
-            </Text>
+            </AppText>
 
-            <Text
+            <AppText
               style={
                 styles.pageSubtitle
               }
@@ -1335,7 +1336,7 @@ export default function CustomersScreen() {
               }
             >
               Manage your milk delivery customers
-            </Text>
+            </AppText>
 
             {!isMobile && (
               <View
@@ -1349,29 +1350,29 @@ export default function CustomersScreen() {
                   }
                 />
 
-                <Text
+                <AppText
                   style={
                     styles.headerMetaText
                   }
                 >
                   {stats.total} customers
-                </Text>
+                </AppText>
 
-                <Text
+                <AppText
                   style={
                     styles.headerBullet
                   }
                 >
                   •
-                </Text>
+                </AppText>
 
-                <Text
+                <AppText
                   style={
                     styles.headerMetaText
                   }
                 >
                   {stats.active} active
-                </Text>
+                </AppText>
               </View>
             )}
           </View>
@@ -1395,13 +1396,13 @@ export default function CustomersScreen() {
                 color="#FFFFFF"
               />
 
-              <Text
+              <AppText
                 style={
                   styles.addButtonText
                 }
               >
                 Add Customer
-              </Text>
+              </AppText>
             </TouchableOpacity>
           )}
         </View>
@@ -1421,15 +1422,15 @@ export default function CustomersScreen() {
         }
       >
         <View>
-          <Text
+          <AppText
             style={
               styles.directoryTitle
             }
           >
             Customer Directory
-          </Text>
+          </AppText>
 
-          <Text
+          <AppText
             style={
               styles.directorySubtitle
             }
@@ -1440,7 +1441,7 @@ export default function CustomersScreen() {
               ? "customer"
               : "customers"}{" "}
             shown
-          </Text>
+          </AppText>
         </View>
 
         {isMobile && (
@@ -1495,7 +1496,7 @@ export default function CustomersScreen() {
           />
         </View>
 
-        <Text
+        <AppText
           style={
             styles.emptyTitle
           }
@@ -1503,9 +1504,9 @@ export default function CustomersScreen() {
           {search
             ? "No customers found"
             : "No customers yet"}
-        </Text>
+        </AppText>
 
-        <Text
+        <AppText
           style={
             styles.emptySubtitle
           }
@@ -1513,7 +1514,7 @@ export default function CustomersScreen() {
           {search
             ? "Try another name, mobile number or address."
             : "Add your first customer to start managing milk deliveries."}
-        </Text>
+        </AppText>
 
         {!search && (
           <TouchableOpacity
@@ -1533,13 +1534,13 @@ export default function CustomersScreen() {
               color="#FFFFFF"
             />
 
-            <Text
+            <AppText
               style={
                 styles.emptyButtonText
               }
             >
               Add Customer
-            </Text>
+            </AppText>
           </TouchableOpacity>
         )}
       </View>
@@ -1634,7 +1635,7 @@ export default function CustomersScreen() {
                     flex: 1,
                   }}
                 >
-                  <Text
+                  <AppText
                     style={
                       styles.modalTitle
                     }
@@ -1642,9 +1643,9 @@ export default function CustomersScreen() {
                     {editingId
                       ? "Edit Customer"
                       : "Add Customer"}
-                  </Text>
+                  </AppText>
 
-                  <Text
+                  <AppText
                     style={
                       styles.modalSubtitle
                     }
@@ -1652,7 +1653,7 @@ export default function CustomersScreen() {
                     {editingId
                       ? "Update customer details"
                       : "Create a new customer profile"}
-                  </Text>
+                  </AppText>
                 </View>
               </View>
 
@@ -1744,13 +1745,13 @@ export default function CustomersScreen() {
                     saving
                   }
                 >
-                  <Text
+                  <AppText
                     style={
                       styles.cancelText
                     }
                   >
                     Cancel
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1780,7 +1781,7 @@ export default function CustomersScreen() {
                     color="#FFFFFF"
                   />
 
-                  <Text
+                  <AppText
                     style={
                       styles.saveText
                     }
@@ -1790,7 +1791,7 @@ export default function CustomersScreen() {
                       : editingId
                       ? "Update Customer"
                       : "Save Customer"}
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -1865,7 +1866,7 @@ export default function CustomersScreen() {
                 />
               </View>
 
-              <Text
+              <AppText
                 style={
                   styles.confirmTitle
                 }
@@ -1873,9 +1874,9 @@ export default function CustomersScreen() {
                 {isMessage
                   ? "Notice"
                   : "Delete customer?"}
-              </Text>
+              </AppText>
 
-              <Text
+              <AppText
                 style={
                   styles.confirmText
                 }
@@ -1883,7 +1884,7 @@ export default function CustomersScreen() {
                 {isMessage
                   ? deleteCustomerData.message
                   : `Are you sure you want to permanently delete ${deleteCustomerData.name}?`}
-              </Text>
+              </AppText>
 
               <View
                 style={
@@ -1906,7 +1907,7 @@ export default function CustomersScreen() {
                     deleting
                   }
                 >
-                  <Text
+                  <AppText
                     style={
                       styles.confirmCancelText
                     }
@@ -1914,7 +1915,7 @@ export default function CustomersScreen() {
                     {isMessage
                       ? "Close"
                       : "Cancel"}
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
 
                 {!isMessage && (
@@ -1943,7 +1944,7 @@ export default function CustomersScreen() {
                       color="#FFFFFF"
                     />
 
-                    <Text
+                    <AppText
                       style={
                         styles.confirmDeleteText
                       }
@@ -1951,7 +1952,7 @@ export default function CustomersScreen() {
                       {deleting
                         ? "Deleting..."
                         : "Delete"}
-                    </Text>
+                    </AppText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -2122,13 +2123,13 @@ function FormField({
         styles.field
       }
     >
-      <Text
+      <AppText
         style={
           styles.fieldLabel
         }
       >
         {label}
-      </Text>
+      </AppText>
 
       <View
         style={[
@@ -2196,7 +2197,7 @@ const styles =
     safeArea: {
       flex: 1,
       backgroundColor:
-        COLORS.background,
+        COLORS.greenDeep,
     },
 
     container: {

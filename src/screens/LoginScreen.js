@@ -2,12 +2,11 @@ import React, { useState } from "react";
 
 import {
   View,
-  Text,
   TextInput,
+  Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  SafeAreaView,
   Image,
   ImageBackground,
   ActivityIndicator,
@@ -17,7 +16,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import AppText from "../components/AppText";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase/firebase";
@@ -199,6 +200,7 @@ export default function LoginScreen() {
     return (
       <SafeAreaView
         style={styles.safe}
+        edges={isMobile ? ["top"] : []}
       >
 
         <ImageBackground
@@ -262,7 +264,7 @@ export default function LoginScreen() {
                 ]}
               >
 
-                <Text
+                <AppText
                   style={[
                     styles.heroTitle,
 
@@ -272,10 +274,10 @@ export default function LoginScreen() {
                 >
                   Manage Your{"\n"}
                   Milk Business
-                </Text>
+                </AppText>
 
 
-                <Text
+                <AppText
                   style={[
                     styles.heroGreen,
 
@@ -284,10 +286,10 @@ export default function LoginScreen() {
                   ]}
                 >
                   with Ease
-                </Text>
+                </AppText>
 
 
-                <Text
+                <AppText
                   style={[
                     styles.heroSubtitle,
 
@@ -296,7 +298,7 @@ export default function LoginScreen() {
                   ]}
                 >
                   Simple • Smart • Reliable
-                </Text>
+                </AppText>
 
               </View>
 
@@ -409,6 +411,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView
       style={styles.safe}
+      edges={["top"]}
     >
 
       <ImageBackground
@@ -466,26 +469,26 @@ export default function LoginScreen() {
               style={styles.mobileHero}
             >
 
-              <Text
+              <AppText
                 style={styles.mobileHeroTitle}
               >
                 Manage Your{"\n"}
                 Milk Business
-              </Text>
+              </AppText>
 
 
-              <Text
+              <AppText
                 style={styles.mobileHeroGreen}
               >
                 with Ease
-              </Text>
+              </AppText>
 
 
-              <Text
+              <AppText
                 style={styles.mobileHeroSubtitle}
               >
                 Simple • Smart • Reliable
-              </Text>
+              </AppText>
 
             </View>
 
@@ -533,11 +536,11 @@ export default function LoginScreen() {
                 color={COLORS.greenDeep}
               />
 
-              <Text
+              <AppText
                 style={styles.mobileSecurityText}
               >
                 Secure • Powered by Firebase
-              </Text>
+              </AppText>
 
             </View>
 
@@ -588,28 +591,28 @@ function Brand({
             style={styles.mobileBrandNameRow}
           >
 
-            <Text
+            <AppText
               style={styles.mobileBrandMilk}
             >
               Milk
-            </Text>
+            </AppText>
 
-            <Text
+            <AppText
               style={
                 styles.mobileBrandGreen
               }
             >
               {" "}Subscription
-            </Text>
+            </AppText>
 
           </View>
 
 
-          <Text
+          <AppText
             style={styles.mobileTagline}
           >
             Fresh Milk | Happy Families | Healthier Tomorrow
-          </Text>
+          </AppText>
 
         </View>
 
@@ -659,7 +662,7 @@ function Brand({
           style={styles.brandNameRow}
         >
 
-          <Text
+          <AppText
             style={[
               styles.brandMilk,
 
@@ -668,9 +671,9 @@ function Brand({
             ]}
           >
             Milk
-          </Text>
+          </AppText>
 
-          <Text
+          <AppText
             style={[
               styles.brandGreen,
 
@@ -679,12 +682,12 @@ function Brand({
             ]}
           >
             {" "}Subscription
-          </Text>
+          </AppText>
 
         </View>
 
 
-        <Text
+        <AppText
           style={[
             styles.tagline,
 
@@ -693,7 +696,7 @@ function Brand({
           ]}
         >
           Fresh Milk | Happy Families | Healthier Tomorrow
-        </Text>
+        </AppText>
 
       </View>
 
@@ -726,11 +729,11 @@ function SecurityBadge() {
       </View>
 
 
-      <Text
+      <AppText
         style={styles.securityBadgeText}
       >
         Secure • Powered by Firebase
-      </Text>
+      </AppText>
 
     </View>
   );
@@ -777,18 +780,18 @@ function Feature({
         style={styles.featureContent}
       >
 
-        <Text
+        <AppText
           style={styles.featureTitle}
         >
           {title}
-        </Text>
+        </AppText>
 
 
-        <Text
+        <AppText
           style={styles.featureDescription}
         >
           {description}
-        </Text>
+        </AppText>
 
       </View>
 
@@ -839,7 +842,7 @@ function LoginCard({
           TITLE
           ====================================================== */}
 
-      <Text
+      <AppText
         style={[
           styles.loginTitle,
 
@@ -851,10 +854,10 @@ function LoginCard({
         ]}
       >
         Welcome Back
-      </Text>
+      </AppText>
 
 
-      <Text
+      <AppText
         style={[
           styles.loginSubtitle,
 
@@ -863,7 +866,7 @@ function LoginCard({
         ]}
       >
         Sign in to continue to your account
-      </Text>
+      </AppText>
 
 
       {/* ======================================================
@@ -874,11 +877,11 @@ function LoginCard({
         style={styles.field}
       >
 
-        <Text
+        <AppText
           style={styles.label}
         >
           Email Address
-        </Text>
+        </AppText>
 
 
         <View
@@ -922,11 +925,11 @@ function LoginCard({
         style={styles.field}
       >
 
-        <Text
+        <AppText
           style={styles.label}
         >
           Password
-        </Text>
+        </AppText>
 
 
         <View
@@ -1032,11 +1035,11 @@ function LoginCard({
           </View>
 
 
-          <Text
+          <AppText
             style={styles.rememberText}
           >
             Remember me
-          </Text>
+          </AppText>
 
         </TouchableOpacity>
 
@@ -1051,11 +1054,11 @@ function LoginCard({
           }
         >
 
-          <Text
+          <AppText
             style={styles.forgotPassword}
           >
             Forgot password?
-          </Text>
+          </AppText>
 
         </TouchableOpacity>
 
@@ -1089,7 +1092,7 @@ function LoginCard({
               color={COLORS.white}
             />
 
-            <Text
+            <AppText
               style={[
                 styles.signInText,
                 {
@@ -1098,7 +1101,7 @@ function LoginCard({
               ]}
             >
               Signing In...
-            </Text>
+            </AppText>
 
           </View>
 
@@ -1108,11 +1111,11 @@ function LoginCard({
             style={styles.buttonInner}
           >
 
-            <Text
+            <AppText
               style={styles.signInText}
             >
               Sign In
-            </Text>
+            </AppText>
 
 
             <View
@@ -1146,11 +1149,11 @@ function LoginCard({
           style={styles.divider}
         />
 
-        <Text
+        <AppText
           style={styles.orText}
         >
           or
-        </Text>
+        </AppText>
 
         <View
           style={styles.divider}
@@ -1184,18 +1187,18 @@ function LoginCard({
           style={styles.firebaseContent}
         >
 
-          <Text
+          <AppText
             style={styles.firebaseTitle}
           >
             Your data is safe and secure
-          </Text>
+          </AppText>
 
 
-          <Text
+          <AppText
             style={styles.firebaseSubtitle}
           >
             with Firebase Authentication
-          </Text>
+          </AppText>
 
         </View>
 
@@ -1218,7 +1221,9 @@ const styles = StyleSheet.create({
 
   safe: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    // Green is visible only in the mobile status-bar/safe-area region.
+    // The actual login content remains the existing farm image.
+    backgroundColor: COLORS.greenDeep,
   },
 
 
