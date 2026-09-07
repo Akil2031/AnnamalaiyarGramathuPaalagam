@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   useWindowDimensions,
@@ -24,7 +25,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
-import AppText from "../components/AppText";
 
 const C = {
   bg: "#F3F7F1",
@@ -112,9 +112,9 @@ function CalendarDatePicker({ visible, value, onClose, onChange }) {
               <Ionicons name="chevron-back" size={20} color={C.secondary} />
             </TouchableOpacity>
             <View style={datePickerStyles.titleWrap}>
-              <AppText style={datePickerStyles.title}>{cursor.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</AppText>
+              <Text style={datePickerStyles.title}>{cursor.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</Text>
               <TouchableOpacity onPress={() => { const now = new Date(); setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); }}>
-                <AppText style={datePickerStyles.today}>Today</AppText>
+                <Text style={datePickerStyles.today}>Today</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={datePickerStyles.nav} onPress={() => setCursor(new Date(year, month + 1, 1))}>
@@ -124,7 +124,7 @@ function CalendarDatePicker({ visible, value, onClose, onChange }) {
 
           <View style={datePickerStyles.weekRow}>
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <AppText key={day} style={datePickerStyles.weekDay}>{day}</AppText>
+              <Text key={day} style={datePickerStyles.weekDay}>{day}</Text>
             ))}
           </View>
 
@@ -138,14 +138,14 @@ function CalendarDatePicker({ visible, value, onClose, onChange }) {
                   onPress={() => choose(day)}
                   style={[datePickerStyles.day, selected ? datePickerStyles.selectedDay : null]}
                 >
-                  {day ? <AppText style={[datePickerStyles.dayText, selected ? datePickerStyles.selectedText : null]}>{day}</AppText> : null}
+                  {day ? <Text style={[datePickerStyles.dayText, selected ? datePickerStyles.selectedText : null]}>{day}</Text> : null}
                 </TouchableOpacity>
               );
             })}
           </View>
 
           <TouchableOpacity style={datePickerStyles.cancel} onPress={onClose}>
-            <AppText style={datePickerStyles.cancelText}>Cancel</AppText>
+            <Text style={datePickerStyles.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -173,10 +173,10 @@ function Metric({ icon, label, value, sub, tone = "green" }) {
         <Ionicons name={icon} size={20} color={iconColor} />
       </View>
 
-      <AppText style={styles.metricLabel}>{label}</AppText>
-      <AppText style={styles.metricValue}>{money(value)}</AppText>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{money(value)}</Text>
 
-      {sub ? <AppText style={styles.metricSub}>{sub}</AppText> : null}
+      {sub ? <Text style={styles.metricSub}>{sub}</Text> : null}
     </View>
   );
 }
@@ -203,14 +203,14 @@ function EntryCard({ item, onEdit, onDelete }) {
           </View>
 
           <View>
-            <AppText style={styles.entryDate}>
+            <Text style={styles.entryDate}>
               {displayDate(item.date)}
-            </AppText>
-            <AppText style={styles.entryDateKey}>{item.date}</AppText>
+            </Text>
+            <Text style={styles.entryDateKey}>{item.date}</Text>
           </View>
         </View>
 
-        <AppText style={styles.entryTotal}>{money(total)}</AppText>
+        <Text style={styles.entryTotal}>{money(total)}</Text>
       </View>
 
       <View style={styles.splitRow}>
@@ -221,9 +221,9 @@ function EntryCard({ item, onEdit, onDelete }) {
               { backgroundColor: C.green },
             ]}
           />
-          <AppText style={styles.splitLabel}>Cash</AppText>
-          <AppText style={styles.splitValue}>{money(cash)}</AppText>
-          <AppText style={styles.percent}>{cashPercent}%</AppText>
+          <Text style={styles.splitLabel}>Cash</Text>
+          <Text style={styles.splitValue}>{money(cash)}</Text>
+          <Text style={styles.percent}>{cashPercent}%</Text>
         </View>
 
         <View style={styles.splitItem}>
@@ -233,9 +233,9 @@ function EntryCard({ item, onEdit, onDelete }) {
               { backgroundColor: C.amber },
             ]}
           />
-          <AppText style={styles.splitLabel}>Online / UPI</AppText>
-          <AppText style={styles.splitValue}>{money(online)}</AppText>
-          <AppText style={styles.percent}>{onlinePercent}%</AppText>
+          <Text style={styles.splitLabel}>Online / UPI</Text>
+          <Text style={styles.splitValue}>{money(online)}</Text>
+          <Text style={styles.percent}>{onlinePercent}%</Text>
         </View>
       </View>
 
@@ -319,7 +319,7 @@ function EditForm({ item, onCancel, onSave }) {
 
   return (
     <View>
-      <AppText style={styles.label}>Sales Date</AppText>
+      <Text style={styles.label}>Sales Date</Text>
 
       <TouchableOpacity
         style={styles.inputBtn}
@@ -330,9 +330,9 @@ function EditForm({ item, onCancel, onSave }) {
           size={18}
           color={C.greenDeep}
         />
-        <AppText style={styles.inputBtnText}>
+        <Text style={styles.inputBtnText}>
           {editDate.toLocaleDateString("en-IN")}
-        </AppText>
+        </Text>
         <Ionicons
           name="chevron-down"
           size={16}
@@ -347,7 +347,7 @@ function EditForm({ item, onCancel, onSave }) {
         onChange={(selected) => setEditDate(selected)}
       />
 
-      <AppText style={styles.label}>Total Sales (₹)</AppText>
+      <Text style={styles.label}>Total Sales (₹)</Text>
       <TextInput
         style={styles.input}
         value={total}
@@ -360,7 +360,7 @@ function EditForm({ item, onCancel, onSave }) {
         placeholderTextColor="#A0AAA4"
       />
 
-      <AppText style={styles.label}>Cash (₹)</AppText>
+      <Text style={styles.label}>Cash (₹)</Text>
       <TextInput
         style={styles.input}
         value={cash}
@@ -373,7 +373,7 @@ function EditForm({ item, onCancel, onSave }) {
         placeholderTextColor="#A0AAA4"
       />
 
-      <AppText style={styles.label}>Online / UPI (₹)</AppText>
+      <Text style={styles.label}>Online / UPI (₹)</Text>
       <TextInput
         style={styles.input}
         value={online}
@@ -386,23 +386,23 @@ function EditForm({ item, onCancel, onSave }) {
         placeholderTextColor="#A0AAA4"
       />
 
-      {error ? <AppText style={styles.error}>{error}</AppText> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.modalRow}>
         <TouchableOpacity
           style={styles.cancelBtn}
           onPress={onCancel}
         >
-          <AppText style={styles.cancelText}>Cancel</AppText>
+          <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.saveModalBtn}
           onPress={save}
         >
-          <AppText style={styles.saveModalText}>
+          <Text style={styles.saveModalText}>
             Save Changes
-          </AppText>
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -611,7 +611,7 @@ export default function DailySalesScreen() {
   return (
     <SafeAreaView
       style={styles.safe}
-      edges={mobile ? ["top"] : []}
+      edges={[]}
     >
       <ScrollView
         ref={formRef}
@@ -622,21 +622,21 @@ export default function DailySalesScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, mobile && styles.headerMobile]}>
           <View style={styles.headerText}>
-            <AppText style={styles.eyebrow}>
+            <Text style={styles.eyebrow}>
               BUSINESS · COLLECTIONS
-            </AppText>
-            <AppText style={styles.title}>
+            </Text>
+            <Text style={styles.title}>
               Daily Sales
-            </AppText>
-            <AppText style={styles.subtitle}>
+            </Text>
+            <Text style={styles.subtitle}>
               Record the day's total sales and payment collection.
-            </AppText>
+            </Text>
           </View>
 
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[styles.primaryBtn, mobile && styles.primaryBtnMobile]}
             onPress={openNewEntry}
           >
             <Ionicons
@@ -644,9 +644,9 @@ export default function DailySalesScreen() {
               size={19}
               color={C.white}
             />
-            <AppText style={styles.primaryText}>
+            <Text style={styles.primaryText}>
               New Entry
-            </AppText>
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -663,13 +663,13 @@ export default function DailySalesScreen() {
           </TouchableOpacity>
 
           <View style={styles.monthCenter}>
-            <AppText style={styles.monthLabel}>
+            <Text style={styles.monthLabel}>
               {MONTHS[month]} {year}
-            </AppText>
-            <AppText style={styles.monthSub}>
+            </Text>
+            <Text style={styles.monthSub}>
               {filtered.length} recorded day
               {filtered.length === 1 ? "" : "s"}
-            </AppText>
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -733,7 +733,7 @@ export default function DailySalesScreen() {
               tab === "entry" ? styles.tabActive : null,
             ]}
           >
-            <AppText
+            <Text
               style={[
                 styles.tabText,
                 tab === "entry"
@@ -742,7 +742,7 @@ export default function DailySalesScreen() {
               ]}
             >
               New Entry
-            </AppText>
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -752,7 +752,7 @@ export default function DailySalesScreen() {
               tab === "history" ? styles.tabActive : null,
             ]}
           >
-            <AppText
+            <Text
               style={[
                 styles.tabText,
                 tab === "history"
@@ -761,7 +761,7 @@ export default function DailySalesScreen() {
               ]}
             >
               Sales History
-            </AppText>
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -773,7 +773,7 @@ export default function DailySalesScreen() {
                 : null,
             ]}
           >
-            <AppText
+            <Text
               style={[
                 styles.tabText,
                 tab === "overview"
@@ -782,22 +782,22 @@ export default function DailySalesScreen() {
               ]}
             >
               Overview
-            </AppText>
+            </Text>
           </TouchableOpacity>
         </View>
 
         {tab === "entry" ? (
           <View style={styles.card}>
-            <AppText style={styles.cardTitle}>
+            <Text style={styles.cardTitle}>
               Record Sales Collection
-            </AppText>
-            <AppText style={styles.cardHint}>
+            </Text>
+            <Text style={styles.cardHint}>
               Cash + Online / UPI must match Total Sales.
-            </AppText>
+            </Text>
 
-            <AppText style={styles.label}>
+            <Text style={styles.label}>
               Sales Date
-            </AppText>
+            </Text>
 
             <TouchableOpacity
               style={styles.inputBtn}
@@ -808,13 +808,13 @@ export default function DailySalesScreen() {
                 size={18}
                 color={C.greenDeep}
               />
-              <AppText style={styles.inputBtnText}>
+              <Text style={styles.inputBtnText}>
                 {date.toLocaleDateString("en-IN", {
                   day: "2-digit",
                   month: "short",
                   year: "numeric",
                 })}
-              </AppText>
+              </Text>
               <Ionicons
                 name="chevron-down"
                 size={16}
@@ -829,9 +829,9 @@ export default function DailySalesScreen() {
               onChange={(selected) => setDate(selected)}
             />
 
-            <AppText style={styles.label}>
+            <Text style={styles.label}>
               Total Sales (₹)
-            </AppText>
+            </Text>
             <TextInput
               style={styles.input}
               value={total}
@@ -852,9 +852,9 @@ export default function DailySalesScreen() {
               }
             >
               <View style={styles.fieldColumn}>
-                <AppText style={styles.label}>
+                <Text style={styles.label}>
                   Cash (₹)
-                </AppText>
+                </Text>
                 <TextInput
                   style={styles.input}
                   value={cash}
@@ -876,9 +876,9 @@ export default function DailySalesScreen() {
                     : styles.fieldColumnGap,
                 ]}
               >
-                <AppText style={styles.label}>
+                <Text style={styles.label}>
                   Online / UPI (₹)
-                </AppText>
+                </Text>
                 <TextInput
                   style={styles.input}
                   value={online}
@@ -915,20 +915,20 @@ export default function DailySalesScreen() {
                   }
                 />
 
-                <AppText style={styles.balanceText}>
+                <Text style={styles.balanceText}>
                   {amountDifference === 0
                     ? "Cash + Online matches Total"
                     : `Difference: ${money(
                         Math.abs(amountDifference)
                       )}`}
-                </AppText>
+                </Text>
               </View>
             ) : null}
 
             {error ? (
-              <AppText style={styles.error}>
+              <Text style={styles.error}>
                 {error}
-              </AppText>
+              </Text>
             ) : null}
 
             <TouchableOpacity
@@ -944,11 +944,11 @@ export default function DailySalesScreen() {
                 size={19}
                 color={C.white}
               />
-              <AppText style={styles.saveText}>
+              <Text style={styles.saveText}>
                 {saving
                   ? "Saving..."
                   : "Save Sales Entry"}
-              </AppText>
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -957,17 +957,17 @@ export default function DailySalesScreen() {
           <View>
             <View style={styles.sectionHead}>
               <View>
-                <AppText style={styles.sectionTitle}>
+                <Text style={styles.sectionTitle}>
                   Sales History
-                </AppText>
-                <AppText style={styles.sectionSub}>
+                </Text>
+                <Text style={styles.sectionSub}>
                   All entries for {MONTHS[month]} {year}
-                </AppText>
+                </Text>
               </View>
 
-              <AppText style={styles.count}>
+              <Text style={styles.count}>
                 {filtered.length}
-              </AppText>
+              </Text>
             </View>
 
             {filtered.map((item) => (
@@ -986,12 +986,12 @@ export default function DailySalesScreen() {
                   size={38}
                   color={C.muted}
                 />
-                <AppText style={styles.emptyTitle}>
+                <Text style={styles.emptyTitle}>
                   No sales recorded
-                </AppText>
-                <AppText style={styles.emptyText}>
+                </Text>
+                <Text style={styles.emptyText}>
                   Add the first sales entry for this month.
-                </AppText>
+                </Text>
 
                 <TouchableOpacity
                   style={styles.emptyAddBtn}
@@ -1002,9 +1002,9 @@ export default function DailySalesScreen() {
                     size={17}
                     color={C.white}
                   />
-                  <AppText style={styles.emptyAddText}>
+                  <Text style={styles.emptyAddText}>
                     Add New Entry
-                  </AppText>
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -1013,9 +1013,9 @@ export default function DailySalesScreen() {
 
         {tab === "overview" ? (
           <View style={styles.card}>
-            <AppText style={styles.cardTitle}>
+            <Text style={styles.cardTitle}>
               Month Overview
-            </AppText>
+            </Text>
 
             {[
               {
@@ -1039,12 +1039,12 @@ export default function DailySalesScreen() {
                 key={item.label}
                 style={styles.summaryRow}
               >
-                <AppText style={styles.summaryLabel}>
+                <Text style={styles.summaryLabel}>
                   {item.label}
-                </AppText>
-                <AppText style={styles.summaryValue}>
+                </Text>
+                <Text style={styles.summaryValue}>
                   {money(item.value)}
-                </AppText>
+                </Text>
               </View>
             ))}
           </View>
@@ -1059,9 +1059,9 @@ export default function DailySalesScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
-            <AppText style={styles.modalTitle}>
+            <Text style={styles.modalTitle}>
               Edit Sales Entry
-            </AppText>
+            </Text>
 
             {edit ? (
               <EditForm
@@ -1092,11 +1092,11 @@ export default function DailySalesScreen() {
               />
             </View>
 
-            <AppText style={styles.modalTitle}>
+            <Text style={styles.modalTitle}>
               Delete sales entry?
-            </AppText>
+            </Text>
 
-            <AppText style={styles.confirmText}>
+            <Text style={styles.confirmText}>
               {deleteTarget
                 ? `${displayDate(
                     deleteTarget.date
@@ -1104,7 +1104,7 @@ export default function DailySalesScreen() {
                     deleteTarget.total
                   )} will be permanently removed.`
                 : ""}
-            </AppText>
+            </Text>
 
             <View style={styles.modalRow}>
               <TouchableOpacity
@@ -1113,18 +1113,18 @@ export default function DailySalesScreen() {
                   setDeleteTarget(null)
                 }
               >
-                <AppText style={styles.cancelText}>
+                <Text style={styles.cancelText}>
                   Cancel
-                </AppText>
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.deleteBtn}
                 onPress={remove}
               >
-                <AppText style={styles.deleteText}>
+                <Text style={styles.deleteText}>
                   Delete
-                </AppText>
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1211,6 +1211,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  headerMobile: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingTop: 2,
+    paddingBottom: 8,
+    marginBottom: 10,
+    flexDirection: "column",
+    alignItems: "stretch",
+  },
   headerText: {
     flex: 1,
   },
@@ -1244,6 +1255,11 @@ const styles = StyleSheet.create({
   primaryText: {
     color: C.white,
     fontWeight: "800",
+  },
+  primaryBtnMobile: {
+    width: "100%",
+    marginLeft: 0,
+    marginTop: 12,
   },
   monthBar: {
     backgroundColor: C.white,

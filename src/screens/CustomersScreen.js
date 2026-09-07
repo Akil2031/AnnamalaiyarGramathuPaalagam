@@ -2095,7 +2095,7 @@ export default function CustomersScreen() {
         )}
 
 
-        <CustomerModal />
+        {CustomerModal()}
 
         <DeleteModal />
       </View>

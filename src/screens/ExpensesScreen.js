@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   useWindowDimensions,
@@ -24,7 +25,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
-import AppText from "../components/AppText";
 
 const C = {
   bg: "#F3F7F1",
@@ -122,27 +122,27 @@ function CalendarDatePicker({ visible, value, onClose, onChange }) {
               <Ionicons name="chevron-back" size={20} color={C.secondary} />
             </TouchableOpacity>
             <View style={styles.pickerTitleWrap}>
-              <AppText style={styles.pickerTitle}>{cursor.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</AppText>
+              <Text style={styles.pickerTitle}>{cursor.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</Text>
               <TouchableOpacity onPress={() => { const now = new Date(); setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); }}>
-                <AppText style={styles.pickerToday}>Today</AppText>
+                <Text style={styles.pickerToday}>Today</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={styles.pickerNav} onPress={() => setCursor(new Date(year, month + 1, 1))}>
               <Ionicons name="chevron-forward" size={20} color={C.secondary} />
             </TouchableOpacity>
           </View>
-          <View style={styles.weekRow}>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => <AppText key={x} style={styles.weekDay}>{x}</AppText>)}</View>
+          <View style={styles.weekRow}>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => <Text key={x} style={styles.weekDay}>{x}</Text>)}</View>
           <View style={styles.dayGrid}>
             {cells.map((day, i) => {
               const isSelected = day === selectedDay;
               return (
                 <TouchableOpacity key={`${year}-${month}-${i}`} disabled={!day} onPress={() => { if (day) { onChange(new Date(year, month, day)); onClose(); } }} style={[styles.dayCell, isSelected && styles.dayCellSelected]}>
-                  {day ? <AppText style={[styles.dayText, isSelected && styles.dayTextSelected]}>{day}</AppText> : null}
+                  {day ? <Text style={[styles.dayText, isSelected && styles.dayTextSelected]}>{day}</Text> : null}
                 </TouchableOpacity>
               );
             })}
           </View>
-          <TouchableOpacity style={styles.pickerCancel} onPress={onClose}><AppText style={styles.pickerCancelText}>Cancel</AppText></TouchableOpacity>
+          <TouchableOpacity style={styles.pickerCancel} onPress={onClose}><Text style={styles.pickerCancelText}>Cancel</Text></TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -155,9 +155,9 @@ function Metric({ icon, label, value, sub, tone = "green" }) {
   return (
     <View style={styles.metric}>
       <View style={[styles.metricIcon, { backgroundColor: soft }]}><Ionicons name={icon} size={20} color={color} /></View>
-      <AppText style={styles.metricLabel}>{label}</AppText>
-      <AppText style={styles.metricValue}>{money(value)}</AppText>
-      {!!sub && <AppText style={styles.metricSub}>{sub}</AppText>}
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{money(value)}</Text>
+      {!!sub && <Text style={styles.metricSub}>{sub}</Text>}
     </View>
   );
 }
@@ -175,25 +175,25 @@ function ExpenseCard({ item, onEdit, onDelete }) {
         <View style={styles.entryDateRow}>
           <View style={styles.dateIcon}><Ionicons name="calendar-outline" size={17} color={C.greenDeep} /></View>
           <View style={{ flex: 1 }}>
-            <AppText style={styles.entryDate}>{displayDate(item.date)}</AppText>
-            <AppText style={styles.entryDateKey}>{item.description || "Finance Entry"}</AppText>
+            <Text style={styles.entryDate}>{displayDate(item.date)}</Text>
+            <Text style={styles.entryDateKey}>{item.description || "Finance Entry"}</Text>
           </View>
         </View>
         <View style={styles.entryAmountWrap}>
-          <AppText style={styles.entryTotal}>{money(amount)}</AppText>
-          <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}18` }]}><AppText style={[styles.categoryBadgeText, { color: categoryColor }]}>{category}</AppText></View>
+          <Text style={styles.entryTotal}>{money(amount)}</Text>
+          <View style={[styles.categoryBadge, { backgroundColor: `${categoryColor}18` }]}><Text style={[styles.categoryBadgeText, { color: categoryColor }]}>{category}</Text></View>
         </View>
       </View>
 
       <View style={styles.detailRow}>
-        <View style={styles.detailItem}><AppText style={styles.detailLabel}>Quantity</AppText><AppText style={styles.detailValue}>{qty || "—"}</AppText></View>
-        <View style={styles.detailItem}><AppText style={styles.detailLabel}>Rate</AppText><AppText style={styles.detailValue}>{rate ? money(rate) : "—"}</AppText></View>
-        <View style={styles.detailItem}><AppText style={styles.detailLabel}>Payment</AppText><AppText style={styles.detailValue}>{item.paymentMode || "Not specified"}</AppText></View>
+        <View style={styles.detailItem}><Text style={styles.detailLabel}>Quantity</Text><Text style={styles.detailValue}>{qty || "—"}</Text></View>
+        <View style={styles.detailItem}><Text style={styles.detailLabel}>Rate</Text><Text style={styles.detailValue}>{rate ? money(rate) : "—"}</Text></View>
+        <View style={styles.detailItem}><Text style={styles.detailLabel}>Payment</Text><Text style={styles.detailValue}>{item.paymentMode || "Not specified"}</Text></View>
       </View>
 
       <View style={styles.entryActions}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onEdit(item)}><Ionicons name="create-outline" size={17} color={C.secondary} /><AppText style={styles.actionText}>Edit</AppText></TouchableOpacity>
-        <TouchableOpacity style={[styles.actionBtn, styles.deleteAction]} onPress={() => onDelete(item)}><Ionicons name="trash-outline" size={17} color={C.danger} /><AppText style={styles.deleteText}>Delete</AppText></TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onEdit(item)}><Ionicons name="create-outline" size={17} color={C.secondary} /><Text style={styles.actionText}>Edit</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.actionBtn, styles.deleteAction]} onPress={() => onDelete(item)}><Ionicons name="trash-outline" size={17} color={C.danger} /><Text style={styles.deleteText}>Delete</Text></TouchableOpacity>
       </View>
     </View>
   );
@@ -290,27 +290,27 @@ export default function ExpensesScreen() {
     catch (e) { console.error("[Expenses] DELETE ERROR:", e); setError(e?.message || "Unable to delete entry."); }
   };
 
-  if (loading) return <SafeAreaView style={styles.safe} edges={mobile ? ["top"] : []}><View style={styles.loading}><ActivityDots /><AppText style={styles.loadingText}>Loading finance records…</AppText></View></SafeAreaView>;
+  if (loading) return <SafeAreaView style={styles.safe} edges={[]}><View style={styles.loading}><ActivityDots /><Text style={styles.loadingText}>Loading finance records…</Text></View></SafeAreaView>;
 
   return (
-    <SafeAreaView style={styles.safe} edges={mobile ? ["top"] : []}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, mobile && styles.contentMobile]} keyboardShouldPersistTaps="handled">
         <View style={[styles.pageHeader, mobile && styles.pageHeaderMobile]}>
           <View style={{ flex: 1 }}>
-            <AppText style={styles.eyebrow}>BUSINESS · EXPENSES</AppText>
-            <AppText style={[styles.title, mobile && styles.titleMobile]}>Expenses</AppText>
-            <AppText style={styles.subtitle}>Record and track the day's business expenses.</AppText>
+            <Text style={styles.eyebrow}>BUSINESS · EXPENSES</Text>
+            <Text style={[styles.title, mobile && styles.titleMobile]}>Expenses</Text>
+            <Text style={styles.subtitle}>Record and track the day's business expenses.</Text>
           </View>
           <TouchableOpacity style={[styles.primaryBtn, mobile && styles.fullBtn]} onPress={openNew}>
-            <Ionicons name="add" size={20} color={C.white} /><AppText style={styles.primaryText}>New Entry</AppText>
+            <Ionicons name="add" size={20} color={C.white} /><Text style={styles.primaryText}>New Entry</Text>
           </TouchableOpacity>
         </View>
 
-        {error ? <View style={styles.errorBanner}><Ionicons name="alert-circle-outline" size={19} color={C.danger} /><AppText style={styles.errorText}>{error}</AppText></View> : null}
+        {error ? <View style={styles.errorBanner}><Ionicons name="alert-circle-outline" size={19} color={C.danger} /><Text style={styles.errorText}>{error}</Text></View> : null}
 
         <View style={[styles.monthCard, mobile && styles.monthCardMobile]}>
           <TouchableOpacity style={styles.monthNav} onPress={() => setSelectedMonth(shiftMonth(selectedMonth, -1))}><Ionicons name="chevron-back" size={20} color={C.secondary} /></TouchableOpacity>
-          <View style={styles.monthCenter}><AppText style={styles.monthTitle}>{monthLabel(selectedMonth)}</AppText><AppText style={styles.monthSub}>{monthData.length} recorded {monthData.length === 1 ? "entry" : "entries"}</AppText></View>
+          <View style={styles.monthCenter}><Text style={styles.monthTitle}>{monthLabel(selectedMonth)}</Text><Text style={styles.monthSub}>{monthData.length} recorded {monthData.length === 1 ? "entry" : "entries"}</Text></View>
           <TouchableOpacity style={styles.monthNav} onPress={() => setSelectedMonth(shiftMonth(selectedMonth, 1))}><Ionicons name="chevron-forward" size={20} color={C.secondary} /></TouchableOpacity>
         </View>
 
@@ -322,47 +322,47 @@ export default function ExpensesScreen() {
         </View>
 
         <View style={styles.tabs}>
-          <TouchableOpacity style={[styles.tab, tab === "entry" && styles.tabActive]} onPress={() => setTab("entry")}><AppText style={[styles.tabText, tab === "entry" && styles.tabTextActive]}>{editItem ? "Edit Entry" : "New Entry"}</AppText></TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, tab === "history" && styles.tabActive]} onPress={() => setTab("history")}><AppText style={[styles.tabText, tab === "history" && styles.tabTextActive]}>Expense History</AppText></TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, tab === "overview" && styles.tabActive]} onPress={() => setTab("overview")}><AppText style={[styles.tabText, tab === "overview" && styles.tabTextActive]}>Overview</AppText></TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, tab === "entry" && styles.tabActive]} onPress={() => setTab("entry")}><Text style={[styles.tabText, tab === "entry" && styles.tabTextActive]}>{editItem ? "Edit Entry" : "New Entry"}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, tab === "history" && styles.tabActive]} onPress={() => setTab("history")}><Text style={[styles.tabText, tab === "history" && styles.tabTextActive]}>Expense History</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, tab === "overview" && styles.tabActive]} onPress={() => setTab("overview")}><Text style={[styles.tabText, tab === "overview" && styles.tabTextActive]}>Overview</Text></TouchableOpacity>
         </View>
 
         {tab === "entry" ? (
           <View style={styles.formCard}>
-            <AppText style={styles.sectionTitle}>{editItem ? "Edit Expense Entry" : "Record Expense"}</AppText>
-            <AppText style={styles.sectionSub}>Enter the business expense details below.</AppText>
+            <Text style={styles.sectionTitle}>{editItem ? "Edit Expense Entry" : "Record Expense"}</Text>
+            <Text style={styles.sectionSub}>Enter the business expense details below.</Text>
 
-            <AppText style={styles.label}>Expense Date</AppText>
+            <Text style={styles.label}>Expense Date</Text>
             <TouchableOpacity style={styles.dateField} onPress={() => setShowDate(true)}>
-              <Ionicons name="calendar-outline" size={19} color={C.greenDeep} /><AppText style={styles.dateFieldText}>{displayDate(form.date)}</AppText><Ionicons name="chevron-down" size={17} color={C.muted} />
+              <Ionicons name="calendar-outline" size={19} color={C.greenDeep} /><Text style={styles.dateFieldText}>{displayDate(form.date)}</Text><Ionicons name="chevron-down" size={17} color={C.muted} />
             </TouchableOpacity>
             <CalendarDatePicker visible={showDate} value={parseDate(form.date)} onClose={() => setShowDate(false)} onChange={(d) => setForm((x) => ({ ...x, date: keyFromDate(d) }))} />
 
-            <AppText style={styles.label}>Description *</AppText>
+            <Text style={styles.label}>Description *</Text>
             <TextInput style={styles.input} value={form.description} onChangeText={(v) => setForm((x) => ({ ...x, description: v }))} placeholder="What was the expense for?" placeholderTextColor="#A0AAA4" />
 
-            <AppText style={styles.label}>Category</AppText>
-            <View style={styles.optionRow}>{CATEGORIES.map((x) => <TouchableOpacity key={x} style={[styles.option, form.category === x && styles.optionActive]} onPress={() => setForm((f) => ({ ...f, category: x }))}><AppText style={[styles.optionText, form.category === x && styles.optionTextActive]}>{x}</AppText></TouchableOpacity>)}</View>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.optionRow}>{CATEGORIES.map((x) => <TouchableOpacity key={x} style={[styles.option, form.category === x && styles.optionActive]} onPress={() => setForm((f) => ({ ...f, category: x }))}><Text style={[styles.optionText, form.category === x && styles.optionTextActive]}>{x}</Text></TouchableOpacity>)}</View>
 
             <View style={[styles.twoCol, mobile && styles.oneCol]}>
-              <View style={{ flex: 1 }}><AppText style={styles.label}>Quantity</AppText><TextInput style={styles.input} value={form.qty} onChangeText={(v) => setForm((x) => ({ ...x, qty: v }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#A0AAA4" /></View>
-              <View style={{ flex: 1 }}><AppText style={styles.label}>Rate (₹)</AppText><TextInput style={styles.input} value={form.rate} onChangeText={(v) => setForm((x) => ({ ...x, rate: v }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#A0AAA4" /></View>
+              <View style={{ flex: 1 }}><Text style={styles.label}>Quantity</Text><TextInput style={styles.input} value={form.qty} onChangeText={(v) => setForm((x) => ({ ...x, qty: v }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#A0AAA4" /></View>
+              <View style={{ flex: 1 }}><Text style={styles.label}>Rate (₹)</Text><TextInput style={styles.input} value={form.rate} onChangeText={(v) => setForm((x) => ({ ...x, rate: v }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#A0AAA4" /></View>
             </View>
 
-            <AppText style={styles.label}>Amount *</AppText>
-            <View style={styles.amountField}><AppText style={styles.currency}>₹</AppText><TextInput style={styles.amountInput} value={form.amount} onChangeText={(v) => setForm((x) => ({ ...x, amount: v }))} keyboardType="decimal-pad" placeholder="Enter total expense" placeholderTextColor="#A0AAA4" /></View>
-            <AppText style={styles.helper}>If Amount is left blank, Quantity × Rate will be used.</AppText>
+            <Text style={styles.label}>Amount *</Text>
+            <View style={styles.amountField}><Text style={styles.currency}>₹</Text><TextInput style={styles.amountInput} value={form.amount} onChangeText={(v) => setForm((x) => ({ ...x, amount: v }))} keyboardType="decimal-pad" placeholder="Enter total expense" placeholderTextColor="#A0AAA4" /></View>
+            <Text style={styles.helper}>If Amount is left blank, Quantity × Rate will be used.</Text>
 
-            <AppText style={styles.label}>Payment Mode</AppText>
-            <View style={styles.optionRow}>{PAYMENT_MODES.map((x) => <TouchableOpacity key={x} style={[styles.option, form.paymentMode === x && styles.optionActive]} onPress={() => setForm((f) => ({ ...f, paymentMode: x }))}><AppText style={[styles.optionText, form.paymentMode === x && styles.optionTextActive]}>{x}</AppText></TouchableOpacity>)}</View>
+            <Text style={styles.label}>Payment Mode</Text>
+            <View style={styles.optionRow}>{PAYMENT_MODES.map((x) => <TouchableOpacity key={x} style={[styles.option, form.paymentMode === x && styles.optionActive]} onPress={() => setForm((f) => ({ ...f, paymentMode: x }))}><Text style={[styles.optionText, form.paymentMode === x && styles.optionTextActive]}>{x}</Text></TouchableOpacity>)}</View>
 
-            <AppText style={styles.label}>Notes</AppText>
+            <Text style={styles.label}>Notes</Text>
             <TextInput style={[styles.input, styles.notesInput]} value={form.notes} onChangeText={(v) => setForm((x) => ({ ...x, notes: v }))} placeholder="Optional notes" placeholderTextColor="#A0AAA4" multiline />
 
-            {formError ? <View style={styles.formError}><Ionicons name="alert-circle-outline" size={18} color={C.danger} /><AppText style={styles.formErrorText}>{formError}</AppText></View> : null}
+            {formError ? <View style={styles.formError}><Ionicons name="alert-circle-outline" size={18} color={C.danger} /><Text style={styles.formErrorText}>{formError}</Text></View> : null}
             <View style={[styles.formActions, mobile && styles.formActionsMobile]}>
-              {editItem ? <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setEditItem(null); resetForm(); }}><AppText style={styles.secondaryBtnText}>Cancel Edit</AppText></TouchableOpacity> : null}
-              <TouchableOpacity disabled={saving} style={[styles.saveBtn, mobile && styles.mobileSaveBtn]} onPress={save}><Ionicons name="checkmark-circle-outline" size={19} color={C.white} /><AppText style={styles.saveText}>{saving ? "Saving…" : editItem ? "Update Expense" : "Save Expense"}</AppText></TouchableOpacity>
+              {editItem ? <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setEditItem(null); resetForm(); }}><Text style={styles.secondaryBtnText}>Cancel Edit</Text></TouchableOpacity> : null}
+              <TouchableOpacity disabled={saving} style={[styles.saveBtn, mobile && styles.mobileSaveBtn]} onPress={save}><Ionicons name="checkmark-circle-outline" size={19} color={C.white} /><Text style={styles.saveText}>{saving ? "Saving…" : editItem ? "Update Expense" : "Save Expense"}</Text></TouchableOpacity>
             </View>
           </View>
         ) : null}
@@ -370,32 +370,32 @@ export default function ExpensesScreen() {
         {tab === "history" ? (
           <View style={styles.historyCard}>
             <View style={[styles.historyHeader, mobile && styles.historyHeaderMobile]}>
-              <View style={{ flex: 1 }}><AppText style={styles.sectionTitle}>Expense History</AppText><AppText style={styles.sectionSub}>{filtered.length} entries in {monthLabel(selectedMonth)}</AppText></View>
-              <TouchableOpacity style={styles.smallAdd} onPress={openNew}><Ionicons name="add" size={17} color={C.white} /><AppText style={styles.smallAddText}>New Entry</AppText></TouchableOpacity>
+              <View style={{ flex: 1 }}><Text style={styles.sectionTitle}>Expense History</Text><Text style={styles.sectionSub}>{filtered.length} entries in {monthLabel(selectedMonth)}</Text></View>
+              <TouchableOpacity style={styles.smallAdd} onPress={openNew}><Ionicons name="add" size={17} color={C.white} /><Text style={styles.smallAddText}>New Entry</Text></TouchableOpacity>
             </View>
             <View style={styles.searchBox}><Ionicons name="search-outline" size={19} color={C.muted} /><TextInput style={styles.searchInput} value={search} onChangeText={setSearch} placeholder="Search expenses..." placeholderTextColor="#A0AAA4" /></View>
             <View style={styles.filterRow}><Filter label="All" active={categoryFilter === "All"} onPress={() => setCategoryFilter("All")} />{CATEGORIES.map((x) => <Filter key={x} label={x} active={categoryFilter === x} onPress={() => setCategoryFilter(x)} />)}</View>
-            {filtered.length ? filtered.map((item) => <ExpenseCard key={item.id} item={item} onEdit={openEdit} onDelete={setDeleteTarget} />) : <View style={styles.empty}><View style={styles.emptyIcon}><Ionicons name="receipt-outline" size={28} color={C.greenDeep} /></View><AppText style={styles.emptyTitle}>No expenses for this month</AppText><AppText style={styles.emptySub}>{data.length ? "Try another month or clear your search/filter." : "Your existing finance records will appear here."}</AppText><TouchableOpacity style={styles.emptyBtn} onPress={openNew}><AppText style={styles.emptyBtnText}>Add New Entry</AppText></TouchableOpacity></View>}
+            {filtered.length ? filtered.map((item) => <ExpenseCard key={item.id} item={item} onEdit={openEdit} onDelete={setDeleteTarget} />) : <View style={styles.empty}><View style={styles.emptyIcon}><Ionicons name="receipt-outline" size={28} color={C.greenDeep} /></View><Text style={styles.emptyTitle}>No expenses for this month</Text><Text style={styles.emptySub}>{data.length ? "Try another month or clear your search/filter." : "Your existing finance records will appear here."}</Text><TouchableOpacity style={styles.emptyBtn} onPress={openNew}><Text style={styles.emptyBtnText}>Add New Entry</Text></TouchableOpacity></View>}
           </View>
         ) : null}
 
         {tab === "overview" ? (
           <View style={styles.overviewCard}>
-            <AppText style={styles.sectionTitle}>Expense Overview</AppText><AppText style={styles.sectionSub}>Breakdown for {monthLabel(selectedMonth)}.</AppText>
-            {[{ label: "Purchases", value: totals.purchase, icon: "cart-outline", tone: C.blue }, { label: "Other Expenses", value: totals.other, icon: "receipt-outline", tone: C.amber }, { label: "Salary", value: totals.salary, icon: "people-outline", tone: C.greenDeep }, { label: "Cash Paid", value: totals.cash, icon: "cash-outline", tone: C.greenDeep }, { label: "Online / Bank", value: totals.online, icon: "phone-portrait-outline", tone: C.blue }].map((r) => <View key={r.label} style={styles.overviewRow}><View style={[styles.overviewIcon, { backgroundColor: `${r.tone}18` }]}><Ionicons name={r.icon} size={19} color={r.tone} /></View><View style={{ flex: 1 }}><AppText style={styles.overviewLabel}>{r.label}</AppText><View style={styles.barTrack}><View style={[styles.barFill, { width: `${totals.total ? Math.min(100, (r.value / totals.total) * 100) : 0}%`, backgroundColor: r.tone }]} /></View></View><AppText style={styles.overviewValue}>{money(r.value)}</AppText></View>)}
+            <Text style={styles.sectionTitle}>Expense Overview</Text><Text style={styles.sectionSub}>Breakdown for {monthLabel(selectedMonth)}.</Text>
+            {[{ label: "Purchases", value: totals.purchase, icon: "cart-outline", tone: C.blue }, { label: "Other Expenses", value: totals.other, icon: "receipt-outline", tone: C.amber }, { label: "Salary", value: totals.salary, icon: "people-outline", tone: C.greenDeep }, { label: "Cash Paid", value: totals.cash, icon: "cash-outline", tone: C.greenDeep }, { label: "Online / Bank", value: totals.online, icon: "phone-portrait-outline", tone: C.blue }].map((r) => <View key={r.label} style={styles.overviewRow}><View style={[styles.overviewIcon, { backgroundColor: `${r.tone}18` }]}><Ionicons name={r.icon} size={19} color={r.tone} /></View><View style={{ flex: 1 }}><Text style={styles.overviewLabel}>{r.label}</Text><View style={styles.barTrack}><View style={[styles.barFill, { width: `${totals.total ? Math.min(100, (r.value / totals.total) * 100) : 0}%`, backgroundColor: r.tone }]} /></View></View><Text style={styles.overviewValue}>{money(r.value)}</Text></View>)}
           </View>
         ) : null}
       </ScrollView>
 
       <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
-        <View style={styles.pickerOverlay}><View style={styles.confirmCard}><View style={styles.confirmIcon}><Ionicons name="trash-outline" size={24} color={C.danger} /></View><AppText style={styles.confirmTitle}>Delete Expense?</AppText><AppText style={styles.confirmText}>{deleteTarget ? `Remove “${deleteTarget.description || "this entry"}” (${money(deleteTarget.amount)}).` : ""}</AppText><View style={styles.confirmActions}><TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteTarget(null)}><AppText style={styles.cancelText}>Cancel</AppText></TouchableOpacity><TouchableOpacity style={styles.confirmDelete} onPress={remove}><AppText style={styles.confirmDeleteText}>Delete</AppText></TouchableOpacity></View></View></View>
+        <View style={styles.pickerOverlay}><View style={styles.confirmCard}><View style={styles.confirmIcon}><Ionicons name="trash-outline" size={24} color={C.danger} /></View><Text style={styles.confirmTitle}>Delete Expense?</Text><Text style={styles.confirmText}>{deleteTarget ? `Remove “${deleteTarget.description || "this entry"}” (${money(deleteTarget.amount)}).` : ""}</Text><View style={styles.confirmActions}><TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteTarget(null)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity><TouchableOpacity style={styles.confirmDelete} onPress={remove}><Text style={styles.confirmDeleteText}>Delete</Text></TouchableOpacity></View></View></View>
       </Modal>
     </SafeAreaView>
   );
 }
 
 function ActivityDots() { return <View style={styles.spinner}><View style={styles.spinnerDot} /><View style={[styles.spinnerDot, { opacity: 0.65 }]} /><View style={[styles.spinnerDot, { opacity: 0.35 }]} /></View>; }
-function Filter({ label, active, onPress }) { return <TouchableOpacity style={[styles.filter, active && styles.filterActive]} onPress={onPress}><AppText style={[styles.filterText, active && styles.filterTextActive]}>{label}</AppText></TouchableOpacity>; }
+function Filter({ label, active, onPress }) { return <TouchableOpacity style={[styles.filter, active && styles.filterActive]} onPress={onPress}><Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text></TouchableOpacity>; }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.greenDeep },
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   spinnerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.green },
   loadingText: { fontSize: 14, color: C.secondary },
   pageHeader: { minHeight: 130, backgroundColor: C.white, borderWidth: 1, borderColor: C.border, borderRadius: 22, paddingHorizontal: 24, paddingVertical: 20, marginBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  pageHeaderMobile: { alignItems: "stretch", flexDirection: "column" },
+  pageHeaderMobile: { alignItems: "stretch", flexDirection: "column", backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8, minHeight: 0, marginBottom: 10 },
   eyebrow: { fontSize: 11, letterSpacing: 1.1, color: C.greenDeep, fontWeight: "800" },
   title: { fontSize: 32, lineHeight: 39, color: C.text, fontWeight: "900", marginTop: 4 },
   titleMobile: { fontSize: 29 },

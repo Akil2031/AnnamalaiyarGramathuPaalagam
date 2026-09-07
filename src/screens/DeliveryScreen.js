@@ -337,7 +337,7 @@ export default function DailyDeliveryScreen() {
       <View><AppText style={S.sectionTitle}>Today's deliveries</AppText><AppText style={S.sectionSub}>{filtered.length} customer{filtered.length===1?"":"s"} shown</AppText></View>
       <View style={S.countBadge}><AppText style={S.countBadgeText}>{deliveredCount} delivered</AppText></View>
     </View>
-    <Toolbar/>
+    {Toolbar()}
   </View>;
 
   const footer=<View style={[S.summary,mobile&&S.summaryMobile]}>
