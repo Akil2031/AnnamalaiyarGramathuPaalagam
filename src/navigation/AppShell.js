@@ -24,7 +24,7 @@ import DailySalesScreen from "../screens/DailySalesScreen";
 import ExpensesScreen from "../screens/ExpensesScreen";
 import OtherBrandProductsScreen from "../screens/OtherBrandProductsScreen";
 
-const BRAND_TITLE = "Annamalaiyar Gramathu Paalaagam";
+const BRAND_TITLE = "Annamalaiyar Gramathu Paalagam";
 const BRAND_TAGLINE = "True Effort Leads to Success";
 
 const MENU_ITEMS = [

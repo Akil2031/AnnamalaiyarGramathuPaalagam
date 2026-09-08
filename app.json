@@ -28,7 +28,8 @@
       "package": "com.anonymous.milksubscriptionsimple"
     },
     "web": {
-      "favicon": "./assets/agp.png"
+      "favicon": "./assets/agp.png",
+      "name": "Annamalaiyar Gramathu Paalagam"
     },
     "extra": {
       "eas": {

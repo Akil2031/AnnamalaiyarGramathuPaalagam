@@ -202,6 +202,20 @@ function getSubscriptionMonthlyValue(item) {
   );
 }
 
+/*
+ * Subscription revenue must represent MONEY ACTUALLY COLLECTED.
+ * Do not use plannedAmount / quantity × rate × plannedDays here.
+ * The Subscription screen persists the collected amount as `paidAmount`.
+ */
+function getSubscriptionCollectedValue(item) {
+  return num(
+    item?.paidAmount ??
+      item?.collectedAmount ??
+      item?.paid ??
+      0
+  );
+}
+
 function getProductStock(item) {
   return num(
     item?.stockQty ??
@@ -1036,22 +1050,26 @@ export default function DashboardScreen({
           );
 
       /*
-       * Subscription revenue is calculated from the currently active
-       * subscriptions. Subscription records are month-specific in the
-       * existing Dashboard data model, so this contributes to the
-       * current month only.
+       * Subscription revenue = COLLECTIONS ONLY.
+       *
+       * Subscription records are month-specific and persist the amount
+       * actually collected in `paidAmount`. Planned/expected subscription
+       * value must never be counted as revenue.
+       *
+       * This also makes the 6-month revenue trend use actual collections
+       * for each subscription month.
        */
-      const subscriptionRevenue =
-        month === monthKey()
-          ? activeSubscriptions.reduce(
-              (sum, subscription) =>
-                sum +
-                getSubscriptionMonthlyValue(
-                  subscription
-                ),
-              0
-            )
-          : 0;
+      const subscriptionRevenue = subscriptions
+        .filter((subscription) =>
+          subscription?.month
+            ? subscription.month === month
+            : getRecordMonthKey(subscription) === month
+        )
+        .reduce(
+          (sum, subscription) =>
+            sum + getSubscriptionCollectedValue(subscription),
+          0
+        );
 
       const totalRevenue =
         subscriptionRevenue +
@@ -1089,7 +1107,7 @@ export default function DashboardScreen({
     dailySales,
     expenses,
     storeSales,
-    activeSubscriptions,
+    subscriptions,
   ]);
 
   const currentMonth =
@@ -1965,7 +1983,7 @@ export default function DashboardScreen({
               value={money(
                 financial.revenue
               )}
-              subtitle="Milk + other brand"
+              subtitle="Collected subscriptions + milk + other brand"
               bg={UI.orangeSoft}
               color={UI.orange}
               screen="DailyBusiness"
@@ -2212,7 +2230,7 @@ export default function DashboardScreen({
 
             <Section
               title="Financial Health"
-              subtitle="Current month"
+              subtitle="Current month · collections"
               icon="wallet-outline"
               iconBg={UI.blueSoft}
               iconColor={UI.blue}
@@ -2420,6 +2438,8 @@ export default function DashboardScreen({
               </View>
 
               <RevenueBreakdown
+                // Subscription amount here is ACTUALLY COLLECTED,
+                // never the planned/expected subscription amount.
                 subscription={
                   currentMonthData.subscriptionRevenue
                 }
