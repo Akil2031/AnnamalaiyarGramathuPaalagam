@@ -90,6 +90,14 @@ const shiftMonth = (key, delta) => {
   return monthKey(d);
 };
 
+const shiftDate = (value, delta) => {
+  const d = parseDate(value) || new Date();
+  d.setDate(d.getDate() + delta);
+  return keyFromDate(d);
+};
+
+const isTodayKey = (value) => value === keyFromDate(new Date());
+
 function CalendarDatePicker({ visible, value, onClose, onChange }) {
   const initial = parseDate(value) || new Date();
   const [cursor, setCursor] = useState(new Date(initial.getFullYear(), initial.getMonth(), 1));
@@ -205,7 +213,9 @@ export default function ExpensesScreen() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedDate, setSelectedDate] = useState(keyFromDate(new Date()));
   const [selectedMonth, setSelectedMonth] = useState(monthKey(new Date()));
+  const [viewMode, setViewMode] = useState("day");
   const [tab, setTab] = useState("entry");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -240,29 +250,140 @@ export default function ExpensesScreen() {
     return () => unsub();
   }, []);
 
-  const monthData = useMemo(() => data.filter((x) => String(x.date || "").slice(0, 7) === selectedMonth), [data, selectedMonth]);
+  const monthData = useMemo(
+    () => data.filter((x) => String(x.date || "").slice(0, 7) === selectedMonth),
+    [data, selectedMonth]
+  );
+
+  const dayData = useMemo(
+    () => monthData.filter((x) => x.date === selectedDate),
+    [monthData, selectedDate]
+  );
+
+  const viewData = viewMode === "day" ? dayData : monthData;
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return monthData.filter((x) => {
-      const text = [x.description, x.category, x.paymentMode, x.notes].map((v) => String(v || "").toLowerCase()).join(" ");
-      return (!q || text.includes(q)) && (categoryFilter === "All" || x.category === categoryFilter) && (paymentFilter === "All" || String(x.paymentMode || "").toLowerCase() === paymentFilter.toLowerCase());
-    }).sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  }, [monthData, search, categoryFilter, paymentFilter]);
+
+    return viewData
+      .filter((x) => {
+        const text = [x.description, x.category, x.paymentMode, x.notes]
+          .map((v) => String(v || "").toLowerCase())
+          .join(" ");
+
+        return (
+          (!q || text.includes(q)) &&
+          (categoryFilter === "All" || x.category === categoryFilter) &&
+          (paymentFilter === "All" ||
+            String(x.paymentMode || "").toLowerCase() ===
+              paymentFilter.toLowerCase())
+        );
+      })
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  }, [viewData, search, categoryFilter, paymentFilter]);
 
   const totals = useMemo(() => {
-    const total = monthData.reduce((a, x) => a + Number(x.amount || 0), 0);
-    const purchase = monthData.filter((x) => x.category === "Purchase").reduce((a, x) => a + Number(x.amount || 0), 0);
-    const salary = monthData.filter((x) => x.category === "Salary").reduce((a, x) => a + Number(x.amount || 0), 0);
+    const total = viewData.reduce((a, x) => a + Number(x.amount || 0), 0);
+    const purchase = viewData
+      .filter((x) => x.category === "Purchase")
+      .reduce((a, x) => a + Number(x.amount || 0), 0);
+    const salary = viewData
+      .filter((x) => x.category === "Salary")
+      .reduce((a, x) => a + Number(x.amount || 0), 0);
     const other = total - purchase - salary;
-    const cash = monthData.filter((x) => String(x.paymentMode || "").toLowerCase() === "cash").reduce((a, x) => a + Number(x.amount || 0), 0);
-    const online = monthData.filter((x) => ["upi", "bank transfer"].includes(String(x.paymentMode || "").toLowerCase())).reduce((a, x) => a + Number(x.amount || 0), 0);
-    const days = new Set(monthData.map((x) => x.date).filter(Boolean)).size;
-    return { total, purchase, salary, other, cash, online, days, average: days ? total / days : 0 };
+    const cash = viewData
+      .filter((x) => String(x.paymentMode || "").toLowerCase() === "cash")
+      .reduce((a, x) => a + Number(x.amount || 0), 0);
+    const online = viewData
+      .filter((x) =>
+        ["upi", "bank transfer"].includes(
+          String(x.paymentMode || "").toLowerCase()
+        )
+      )
+      .reduce((a, x) => a + Number(x.amount || 0), 0);
+
+    const days = new Set(viewData.map((x) => x.date).filter(Boolean)).size;
+
+    return {
+      total,
+      purchase,
+      salary,
+      other,
+      cash,
+      online,
+      days,
+      average: days ? total / days : 0,
+    };
+  }, [viewData]);
+
+  const daySummaries = useMemo(() => {
+    const map = new Map();
+
+    monthData.forEach((item) => {
+      if (!item.date) return;
+
+      const current = map.get(item.date) || {
+        date: item.date,
+        total: 0,
+        count: 0,
+      };
+
+      current.total += Number(item.amount || 0);
+      current.count += 1;
+      map.set(item.date, current);
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      String(b.date).localeCompare(String(a.date))
+    );
   }, [monthData]);
 
+  const changeSelectedDate = (dateKey) => {
+    const normalized = normalizeDate(dateKey) || keyFromDate(new Date());
+    setSelectedDate(normalized);
+    setSelectedMonth(normalized.slice(0, 7));
+  };
+
+  const goPreviousDay = () => changeSelectedDate(shiftDate(selectedDate, -1));
+  const goNextDay = () => changeSelectedDate(shiftDate(selectedDate, 1));
+  const goToday = () => changeSelectedDate(keyFromDate(new Date()));
+
   const resetForm = () => setForm({ date: keyFromDate(new Date()), description: "", qty: "", rate: "", amount: "", category: "Expenses", paymentMode: "Cash", notes: "" });
-  const openNew = () => { resetForm(); setEditItem(null); setFormError(""); setTab("entry"); setShowModal(false); };
-  const openEdit = (item) => { setEditItem(item); setForm({ date: item.date || keyFromDate(new Date()), description: item.description || "", qty: item.qty != null ? String(item.qty) : "", rate: item.rate != null ? String(item.rate) : "", amount: String(item.amount || ""), category: item.category || "Expenses", paymentMode: item.paymentMode || "Cash", notes: item.notes || "" }); setFormError(""); setTab("entry"); };
+  const openNew = () => {
+    setForm({
+      date: selectedDate || keyFromDate(new Date()),
+      description: "",
+      qty: "",
+      rate: "",
+      amount: "",
+      category: "Expenses",
+      paymentMode: "Cash",
+      notes: "",
+    });
+    setEditItem(null);
+    setFormError("");
+    setTab("entry");
+    setShowDate(false);
+  };
+  const openEdit = (item) => {
+    const itemDate = item.date || keyFromDate(new Date());
+
+    setEditItem(item);
+    setForm({
+      date: itemDate,
+      description: item.description || "",
+      qty: item.qty != null ? String(item.qty) : "",
+      rate: item.rate != null ? String(item.rate) : "",
+      amount: String(item.amount || ""),
+      category: item.category || "Expenses",
+      paymentMode: item.paymentMode || "Cash",
+      notes: item.notes || "",
+    });
+
+    changeSelectedDate(itemDate);
+    setFormError("");
+    setTab("entry");
+  };
 
   const save = async () => {
     const description = form.description.trim();
@@ -308,11 +429,84 @@ export default function ExpensesScreen() {
 
         {error ? <View style={styles.errorBanner}><Ionicons name="alert-circle-outline" size={19} color={C.danger} /><Text style={styles.errorText}>{error}</Text></View> : null}
 
-        <View style={[styles.monthCard, mobile && styles.monthCardMobile]}>
-          <TouchableOpacity style={styles.monthNav} onPress={() => setSelectedMonth(shiftMonth(selectedMonth, -1))}><Ionicons name="chevron-back" size={20} color={C.secondary} /></TouchableOpacity>
-          <View style={styles.monthCenter}><Text style={styles.monthTitle}>{monthLabel(selectedMonth)}</Text><Text style={styles.monthSub}>{monthData.length} recorded {monthData.length === 1 ? "entry" : "entries"}</Text></View>
-          <TouchableOpacity style={styles.monthNav} onPress={() => setSelectedMonth(shiftMonth(selectedMonth, 1))}><Ionicons name="chevron-forward" size={20} color={C.secondary} /></TouchableOpacity>
+        <View style={[styles.dayNavigator, mobile && styles.dayNavigatorMobile]}>
+          <TouchableOpacity style={styles.dayNavButton} onPress={goPreviousDay}>
+            <Ionicons name="chevron-back" size={21} color={C.secondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.selectedDayCard}
+            onPress={() => setShowDate(true)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.selectedDayIcon}>
+              <Ionicons name="calendar-outline" size={21} color={C.greenDeep} />
+            </View>
+            <View style={styles.selectedDayTextWrap}>
+              <View style={styles.selectedDayTitleRow}>
+                <Text style={styles.selectedDayTitle}>{displayDate(selectedDate)}</Text>
+                {isTodayKey(selectedDate) ? (
+                  <View style={styles.todayBadge}>
+                    <Text style={styles.todayBadgeText}>TODAY</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.selectedDaySub}>
+                {dayData.length} {dayData.length === 1 ? "expense" : "expenses"} · {monthLabel(selectedMonth)}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color={C.muted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.dayNavButton} onPress={goNextDay}>
+            <Ionicons name="chevron-forward" size={21} color={C.secondary} />
+          </TouchableOpacity>
         </View>
+
+        <View style={[styles.dateQuickRow, mobile && styles.dateQuickRowMobile]}>
+          <TouchableOpacity style={styles.quickDateBtn} onPress={goToday}>
+            <Ionicons name="today-outline" size={16} color={C.greenDeep} />
+            <Text style={styles.quickDateText}>Today</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickDateBtn} onPress={() => setShowDate(true)}>
+            <Ionicons name="calendar-outline" size={16} color={C.greenDeep} />
+            <Text style={styles.quickDateText}>Choose Date</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickDateBtn}
+            onPress={() => {
+              const next = shiftMonth(selectedMonth, -1);
+              setSelectedMonth(next);
+              setSelectedDate(`${next}-01`);
+            }}
+          >
+            <Ionicons name="chevron-back" size={16} color={C.secondary} />
+            <Text style={styles.quickDateText}>Previous Month</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickDateBtn}
+            onPress={() => {
+              const next = shiftMonth(selectedMonth, 1);
+              setSelectedMonth(next);
+              setSelectedDate(`${next}-01`);
+            }}
+          >
+            <Text style={styles.quickDateText}>Next Month</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.secondary} />
+          </TouchableOpacity>
+        </View>
+
+        {tab !== "entry" ? (
+          <CalendarDatePicker
+            visible={showDate}
+            value={parseDate(selectedDate)}
+            onClose={() => setShowDate(false)}
+            onChange={(d) => changeSelectedDate(keyFromDate(d))}
+          />
+        ) : null}
 
         <View style={styles.metrics}>
           <Metric icon="wallet-outline" label="TOTAL EXPENSES" value={totals.total} sub={`${monthData.length} entries`} />
@@ -336,7 +530,16 @@ export default function ExpensesScreen() {
             <TouchableOpacity style={styles.dateField} onPress={() => setShowDate(true)}>
               <Ionicons name="calendar-outline" size={19} color={C.greenDeep} /><Text style={styles.dateFieldText}>{displayDate(form.date)}</Text><Ionicons name="chevron-down" size={17} color={C.muted} />
             </TouchableOpacity>
-            <CalendarDatePicker visible={showDate} value={parseDate(form.date)} onClose={() => setShowDate(false)} onChange={(d) => setForm((x) => ({ ...x, date: keyFromDate(d) }))} />
+            <CalendarDatePicker
+              visible={showDate}
+              value={parseDate(form.date)}
+              onClose={() => setShowDate(false)}
+              onChange={(d) => {
+                const nextDate = keyFromDate(d);
+                setForm((x) => ({ ...x, date: nextDate }));
+                changeSelectedDate(nextDate);
+              }}
+            />
 
             <Text style={styles.label}>Description *</Text>
             <TextInput style={styles.input} value={form.description} onChangeText={(v) => setForm((x) => ({ ...x, description: v }))} placeholder="What was the expense for?" placeholderTextColor="#A0AAA4" />
@@ -370,18 +573,151 @@ export default function ExpensesScreen() {
         {tab === "history" ? (
           <View style={styles.historyCard}>
             <View style={[styles.historyHeader, mobile && styles.historyHeaderMobile]}>
-              <View style={{ flex: 1 }}><Text style={styles.sectionTitle}>Expense History</Text><Text style={styles.sectionSub}>{filtered.length} entries in {monthLabel(selectedMonth)}</Text></View>
-              <TouchableOpacity style={styles.smallAdd} onPress={openNew}><Ionicons name="add" size={17} color={C.white} /><Text style={styles.smallAddText}>New Entry</Text></TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sectionTitle}>Expense History</Text>
+                <Text style={styles.sectionSub}>
+                  {viewMode === "day"
+                    ? `${filtered.length} entries on ${displayDate(selectedDate)}`
+                    : `${filtered.length} entries in ${monthLabel(selectedMonth)}`}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.smallAdd} onPress={openNew}>
+                <Ionicons name="add" size={17} color={C.white} />
+                <Text style={styles.smallAddText}>New Entry</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.searchBox}><Ionicons name="search-outline" size={19} color={C.muted} /><TextInput style={styles.searchInput} value={search} onChangeText={setSearch} placeholder="Search expenses..." placeholderTextColor="#A0AAA4" /></View>
-            <View style={styles.filterRow}><Filter label="All" active={categoryFilter === "All"} onPress={() => setCategoryFilter("All")} />{CATEGORIES.map((x) => <Filter key={x} label={x} active={categoryFilter === x} onPress={() => setCategoryFilter(x)} />)}</View>
-            {filtered.length ? filtered.map((item) => <ExpenseCard key={item.id} item={item} onEdit={openEdit} onDelete={setDeleteTarget} />) : <View style={styles.empty}><View style={styles.emptyIcon}><Ionicons name="receipt-outline" size={28} color={C.greenDeep} /></View><Text style={styles.emptyTitle}>No expenses for this month</Text><Text style={styles.emptySub}>{data.length ? "Try another month or clear your search/filter." : "Your existing finance records will appear here."}</Text><TouchableOpacity style={styles.emptyBtn} onPress={openNew}><Text style={styles.emptyBtnText}>Add New Entry</Text></TouchableOpacity></View>}
+
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === "day" && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode("day")}
+              >
+                <Ionicons name="calendar-outline" size={16} color={viewMode === "day" ? C.greenDeep : C.secondary} />
+                <Text style={[styles.viewToggleText, viewMode === "day" && styles.viewToggleTextActive]}>Day View</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === "month" && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode("month")}
+              >
+                <Ionicons name="grid-outline" size={16} color={viewMode === "month" ? C.greenDeep : C.secondary} />
+                <Text style={[styles.viewToggleText, viewMode === "month" && styles.viewToggleTextActive]}>Month View</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={19} color={C.muted} />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder={viewMode === "day" ? "Search this day..." : "Search this month..."}
+                placeholderTextColor="#A0AAA4"
+              />
+            </View>
+
+            <View style={styles.filterRow}>
+              <Filter label="All" active={categoryFilter === "All"} onPress={() => setCategoryFilter("All")} />
+              {CATEGORIES.map((x) => (
+                <Filter key={x} label={x} active={categoryFilter === x} onPress={() => setCategoryFilter(x)} />
+              ))}
+            </View>
+
+            {viewMode === "month" ? (
+              daySummaries.length ? (
+                <View style={styles.daySummaryList}>
+                  <Text style={styles.daySummaryHeading}>Daily Expense Summary</Text>
+                  {daySummaries.map((day) => {
+                    const selected = day.date === selectedDate;
+
+                    return (
+                      <TouchableOpacity
+                        key={day.date}
+                        style={[styles.daySummaryRow, selected && styles.daySummaryRowSelected]}
+                        onPress={() => {
+                          changeSelectedDate(day.date);
+                          setViewMode("day");
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.daySummaryIcon, selected && styles.daySummaryIconSelected]}>
+                          <Ionicons name="calendar-outline" size={18} color={selected ? C.white : C.greenDeep} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.daySummaryDate}>{displayDate(day.date)}</Text>
+                          <Text style={styles.daySummaryCount}>
+                            {day.count} {day.count === 1 ? "entry" : "entries"}
+                          </Text>
+                        </View>
+                        <View style={styles.daySummaryAmountWrap}>
+                          <Text style={styles.daySummaryAmount}>{money(day.total)}</Text>
+                          <Text style={styles.daySummaryLink}>View day →</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.empty}>
+                  <View style={styles.emptyIcon}>
+                    <Ionicons name="calendar-outline" size={28} color={C.greenDeep} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No expenses recorded this month</Text>
+                  <Text style={styles.emptySub}>Choose another month or add a new expense entry.</Text>
+                  <TouchableOpacity style={styles.emptyBtn} onPress={openNew}>
+                    <Text style={styles.emptyBtnText}>Add New Entry</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            ) : filtered.length ? (
+              <>
+                <View style={styles.dayResultBanner}>
+                  <View style={styles.dayResultIcon}>
+                    <Ionicons name="calendar-outline" size={18} color={C.greenDeep} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dayResultTitle}>{displayDate(selectedDate)}</Text>
+                    <Text style={styles.dayResultSub}>
+                      {filtered.length} matching {filtered.length === 1 ? "entry" : "entries"}
+                    </Text>
+                  </View>
+                  <Text style={styles.dayResultAmount}>{money(totals.total)}</Text>
+                </View>
+
+                {filtered.map((item) => (
+                  <ExpenseCard key={item.id} item={item} onEdit={openEdit} onDelete={setDeleteTarget} />
+                ))}
+              </>
+            ) : (
+              <View style={styles.empty}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="receipt-outline" size={28} color={C.greenDeep} />
+                </View>
+                <Text style={styles.emptyTitle}>No expenses for this day</Text>
+                <Text style={styles.emptySub}>
+                  {dayData.length
+                    ? "Try another search or category filter."
+                    : `No finance entries were recorded on ${displayDate(selectedDate)}.`}
+                </Text>
+                <View style={styles.emptyActionRow}>
+                  <TouchableOpacity style={styles.emptyBtnSecondary} onPress={goPreviousDay}>
+                    <Ionicons name="chevron-back" size={16} color={C.greenDeep} />
+                    <Text style={styles.emptyBtnSecondaryText}>Previous Day</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.emptyBtn} onPress={openNew}>
+                    <Text style={styles.emptyBtnText}>Add New Entry</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         ) : null}
 
         {tab === "overview" ? (
           <View style={styles.overviewCard}>
-            <Text style={styles.sectionTitle}>Expense Overview</Text><Text style={styles.sectionSub}>Breakdown for {monthLabel(selectedMonth)}.</Text>
+            <Text style={styles.sectionTitle}>Expense Overview</Text>
+            <Text style={styles.sectionSub}>
+              Breakdown for {viewMode === "day" ? displayDate(selectedDate) : monthLabel(selectedMonth)}.
+            </Text>
             {[{ label: "Purchases", value: totals.purchase, icon: "cart-outline", tone: C.blue }, { label: "Other Expenses", value: totals.other, icon: "receipt-outline", tone: C.amber }, { label: "Salary", value: totals.salary, icon: "people-outline", tone: C.greenDeep }, { label: "Cash Paid", value: totals.cash, icon: "cash-outline", tone: C.greenDeep }, { label: "Online / Bank", value: totals.online, icon: "phone-portrait-outline", tone: C.blue }].map((r) => <View key={r.label} style={styles.overviewRow}><View style={[styles.overviewIcon, { backgroundColor: `${r.tone}18` }]}><Ionicons name={r.icon} size={19} color={r.tone} /></View><View style={{ flex: 1 }}><Text style={styles.overviewLabel}>{r.label}</Text><View style={styles.barTrack}><View style={[styles.barFill, { width: `${totals.total ? Math.min(100, (r.value / totals.total) * 100) : 0}%`, backgroundColor: r.tone }]} /></View></View><Text style={styles.overviewValue}>{money(r.value)}</Text></View>)}
           </View>
         ) : null}
@@ -417,6 +753,21 @@ const styles = StyleSheet.create({
   primaryText: { fontSize: 14, fontWeight: "800", color: C.white, marginLeft: 6 },
   errorBanner: { backgroundColor: C.dangerSoft, borderWidth: 1, borderColor: "#F5CACA", borderRadius: 12, padding: 12, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 9 },
   errorText: { flex: 1, color: C.danger, fontSize: 12, fontWeight: "600" },
+  dayNavigator: { minHeight: 76, backgroundColor: C.white, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 10, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 9 },
+  dayNavigatorMobile: { minHeight: 74, padding: 8, gap: 7 },
+  dayNavButton: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#F1F6EF", alignItems: "center", justifyContent: "center" },
+  selectedDayCard: { flex: 1, minHeight: 54, borderRadius: 13, backgroundColor: C.greenSoft, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10 },
+  selectedDayIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: C.white, alignItems: "center", justifyContent: "center" },
+  selectedDayTextWrap: { flex: 1, minWidth: 0 },
+  selectedDayTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  selectedDayTitle: { fontSize: 15, fontWeight: "900", color: C.text },
+  selectedDaySub: { fontSize: 10, color: C.secondary, marginTop: 3 },
+  todayBadge: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: C.green },
+  todayBadgeText: { color: C.white, fontSize: 8, fontWeight: "900", letterSpacing: 0.4 },
+  dateQuickRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
+  dateQuickRowMobile: { gap: 7 },
+  quickDateBtn: { minHeight: 35, paddingHorizontal: 11, borderRadius: 9, backgroundColor: C.white, borderWidth: 1, borderColor: C.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  quickDateText: { fontSize: 11, color: C.secondary, fontWeight: "800" },
   monthCard: { minHeight: 64, backgroundColor: C.white, borderWidth: 1, borderColor: C.border, borderRadius: 17, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   monthCardMobile: { minHeight: 68 },
   monthNav: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#F1F6EF", alignItems: "center", justifyContent: "center" },
@@ -468,6 +819,27 @@ const styles = StyleSheet.create({
   historyHeaderMobile: { flexDirection: "column", alignItems: "stretch" },
   smallAdd: { minHeight: 40, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.green, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginLeft: 12 },
   smallAddText: { color: C.white, fontSize: 12, fontWeight: "800" },
+  viewToggle: { flexDirection: "row", backgroundColor: "#F5F8F4", borderRadius: 10, padding: 3, marginTop: 2, marginBottom: 14 },
+  viewToggleBtn: { flex: 1, minHeight: 38, borderRadius: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  viewToggleBtnActive: { backgroundColor: C.white, borderWidth: 1, borderColor: C.border },
+  viewToggleText: { fontSize: 12, color: C.secondary, fontWeight: "700" },
+  viewToggleTextActive: { color: C.greenDeep, fontWeight: "900" },
+  daySummaryList: { marginTop: 2 },
+  daySummaryHeading: { fontSize: 13, fontWeight: "900", color: C.text, marginBottom: 9 },
+  daySummaryRow: { minHeight: 66, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 10, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8, backgroundColor: C.white },
+  daySummaryRowSelected: { backgroundColor: C.greenSoft, borderColor: C.green },
+  daySummaryIcon: { width: 39, height: 39, borderRadius: 11, backgroundColor: C.greenSoft, alignItems: "center", justifyContent: "center" },
+  daySummaryIconSelected: { backgroundColor: C.green },
+  daySummaryDate: { fontSize: 13, fontWeight: "900", color: C.text },
+  daySummaryCount: { fontSize: 10, color: C.secondary, marginTop: 2 },
+  daySummaryAmountWrap: { alignItems: "flex-end" },
+  daySummaryAmount: { fontSize: 14, fontWeight: "900", color: C.text },
+  daySummaryLink: { fontSize: 9, color: C.greenDeep, fontWeight: "800", marginTop: 2 },
+  dayResultBanner: { minHeight: 58, backgroundColor: C.greenSoft, borderWidth: 1, borderColor: "#D6EBCB", borderRadius: 12, paddingHorizontal: 11, marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 9 },
+  dayResultIcon: { width: 35, height: 35, borderRadius: 10, backgroundColor: C.white, alignItems: "center", justifyContent: "center" },
+  dayResultTitle: { fontSize: 12, fontWeight: "900", color: C.text },
+  dayResultSub: { fontSize: 10, color: C.secondary, marginTop: 2 },
+  dayResultAmount: { fontSize: 15, fontWeight: "900", color: C.greenDeep },
   searchBox: { height: 46, borderWidth: 1, borderColor: C.border, borderRadius: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, marginBottom: 10 },
   searchInput: { flex: 1, height: "100%", marginLeft: 7, color: C.text, fontSize: 13 },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 14 },
@@ -494,6 +866,9 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 11, fontWeight: "800", color: C.secondary },
   deleteAction: { backgroundColor: C.dangerSoft },
   deleteText: { fontSize: 11, fontWeight: "800", color: C.danger },
+  emptyActionRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 15 },
+  emptyBtnSecondary: { minHeight: 40, paddingHorizontal: 13, borderRadius: 9, backgroundColor: C.greenSoft, borderWidth: 1, borderColor: "#D6EBCB", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  emptyBtnSecondaryText: { color: C.greenDeep, fontSize: 11, fontWeight: "900" },
   empty: { alignItems: "center", paddingVertical: 50 },
   emptyIcon: { width: 58, height: 58, borderRadius: 17, backgroundColor: C.greenSoft, alignItems: "center", justifyContent: "center" },
   emptyTitle: { marginTop: 13, fontSize: 17, fontWeight: "900", color: C.text },
