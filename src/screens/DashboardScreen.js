@@ -194,6 +194,14 @@ function getSubscriptionRate(item) {
   );
 }
 
+function getSubscriptionMonthlyValue(item) {
+  return (
+    getSubscriptionQuantity(item) *
+    getSubscriptionRate(item) *
+    num(item?.plannedDays || 30)
+  );
+}
+
 function getProductStock(item) {
   return num(
     item?.stockQty ??
@@ -1027,6 +1035,29 @@ export default function DashboardScreen({
             0
           );
 
+      /*
+       * Subscription revenue is calculated from the currently active
+       * subscriptions. Subscription records are month-specific in the
+       * existing Dashboard data model, so this contributes to the
+       * current month only.
+       */
+      const subscriptionRevenue =
+        month === monthKey()
+          ? activeSubscriptions.reduce(
+              (sum, subscription) =>
+                sum +
+                getSubscriptionMonthlyValue(
+                  subscription
+                ),
+              0
+            )
+          : 0;
+
+      const totalRevenue =
+        subscriptionRevenue +
+        milkSales +
+        brandSales;
+
       const brandMargin =
         storeSales
           .filter((r) =>
@@ -1042,16 +1073,14 @@ export default function DashboardScreen({
       return {
         month,
         label: monthName(month),
+        subscriptionRevenue,
         milkSales,
         brandSales,
         brandMargin,
         expenses: expense,
-        revenue:
-          milkSales +
-          brandSales,
+        revenue: totalRevenue,
         net:
-          milkSales +
-          brandSales -
+          totalRevenue -
           expense,
       };
     });
@@ -1060,6 +1089,7 @@ export default function DashboardScreen({
     dailySales,
     expenses,
     storeSales,
+    activeSubscriptions,
   ]);
 
   const currentMonth =
@@ -1071,6 +1101,7 @@ export default function DashboardScreen({
         item.month ===
         currentMonth
     ) || {
+      subscriptionRevenue: 0,
       milkSales: 0,
       brandSales: 0,
       brandMargin: 0,
@@ -1140,94 +1171,78 @@ export default function DashboardScreen({
 
   const deliveryOverview =
     useMemo(() => {
-      const expected =
-        milkOverview.dailyMilk;
+      /*
+       * DeliveryScreen stores ONLY exceptions in Firestore.
+       *
+       * Delivered = active subscription with NO `missed` record for today.
+       * Missed    = active subscription WITH a `missed` record for today.
+       *
+       * The previous Dashboard logic expected a positive `delivered` /
+       * `completed` delivery document. That document is never created by
+       * DeliveryScreen, so a successfully delivered day was incorrectly
+       * shown as 0 L delivered.
+       */
+      const expected = milkOverview.dailyMilk;
+      const expectedCustomers = activeSubscriptions.length;
+      const activeCustomerIds = new Set(
+        activeSubscriptions.map((s) => s?.customerId).filter(Boolean)
+      );
 
-      const today =
-        allDeliveries.filter(
-          isToday
+      const todayMissed = allDeliveries.filter((delivery) => {
+        const status = String(delivery?.status || '').toLowerCase();
+        return (
+          isToday(delivery) &&
+          (status === 'missed' || delivery?.missed === true) &&
+          activeCustomerIds.has(delivery?.customerId)
         );
-
-      let delivered = 0;
-      let missed = 0;
-      let deliveredCustomers = 0;
-
-      today.forEach((delivery) => {
-        const status =
-          String(
-            delivery?.status ||
-              ""
-          ).toLowerCase();
-
-        const isDelivered =
-          delivery?.delivered ===
-            true ||
-          status ===
-            "delivered" ||
-          status ===
-            "completed";
-
-        const isMissed =
-          delivery?.missed ===
-            true ||
-          status === "missed";
-
-        if (isDelivered) {
-          let litres = num(
-            delivery?.quantity ??
-              delivery?.litres ??
-              delivery?.qty
-          );
-
-          if (!litres) {
-            const subscription =
-              activeSubscriptions.find(
-                (s) =>
-                  s?.customerId ===
-                  delivery?.customerId
-              );
-
-            litres =
-              getSubscriptionQuantity(
-                subscription
-              );
-          }
-
-          delivered +=
-            litres;
-
-          deliveredCustomers +=
-            1;
-        }
-
-        if (isMissed) {
-          missed += 1;
-        }
       });
 
-      const expectedCustomers =
-        activeSubscriptions.length;
+      const missedCustomerIds = new Set(
+        todayMissed.map((delivery) => delivery?.customerId).filter(Boolean)
+      );
 
-      if (
-        missed === 0 &&
-        today.length > 0 &&
-        deliveredCustomers <
-          expectedCustomers
-      ) {
-        missed =
-          expectedCustomers -
-          deliveredCustomers;
-      }
+      let missed = 0;
+      let missedLitres = 0;
+
+      todayMissed.forEach((delivery) => {
+        missed += 1;
+
+        let litres = num(
+          delivery?.quantity ??
+            delivery?.litres ??
+            delivery?.qty
+        );
+
+        if (!litres) {
+          const subscription = activeSubscriptions.find(
+            (s) => s?.customerId === delivery?.customerId
+          );
+          litres = getSubscriptionQuantity(subscription);
+        }
+
+        missedLitres += litres;
+      });
+
+      /*
+       * Every active subscription is considered delivered unless a missed
+       * record exists for that customer/date. This matches DeliveryScreen's
+       * actual persistence model exactly.
+       */
+      const deliveredCustomers = Math.max(
+        0,
+        expectedCustomers - missedCustomerIds.size
+      );
+
+      const delivered = Math.max(
+        0,
+        expected - missedLitres
+      );
 
       const percentage =
         expected > 0
           ? Math.min(
               100,
-              Math.round(
-                (delivered /
-                  expected) *
-                  100
-              )
+              Math.round((delivered / expected) * 100)
             )
           : 0;
 
@@ -2405,6 +2420,9 @@ export default function DashboardScreen({
               </View>
 
               <RevenueBreakdown
+                subscription={
+                  currentMonthData.subscriptionRevenue
+                }
                 milk={
                   currentMonthData.milkSales
                 }
@@ -2850,11 +2868,21 @@ export default function DashboardScreen({
 /* ========================================================================== */
 
 function RevenueBreakdown({
+  subscription,
   milk,
   other,
 }) {
   const total =
-    num(milk) + num(other);
+    num(subscription) +
+    num(milk) +
+    num(other);
+
+  const subscriptionPercent =
+    total > 0
+      ? (num(subscription) /
+          total) *
+        100
+      : 0;
 
   const milkPercent =
     total > 0
@@ -2879,6 +2907,15 @@ function RevenueBreakdown({
       >
         <View
           style={[
+            styles.revenueSubscription,
+            {
+              width: `${subscriptionPercent}%`,
+            },
+          ]}
+        />
+
+        <View
+          style={[
             styles.revenueMilk,
             {
               width: `${milkPercent}%`,
@@ -2897,10 +2934,45 @@ function RevenueBreakdown({
       </View>
 
       <View
-        style={
-          styles.revenueLegend
-        }
+        style={[
+          styles.revenueLegend,
+          styles.revenueLegendWrap,
+        ]}
       >
+        <View
+          style={
+            styles.revenueLegendItem
+          }
+        >
+          <View
+            style={[
+              styles.revenueDot,
+              {
+                backgroundColor:
+                  UI.teal,
+              },
+            ]}
+          />
+
+          <View>
+            <AppText
+              style={
+                styles.revenueLabel
+              }
+            >
+              Subscription
+            </AppText>
+
+            <AppText
+              style={
+                styles.revenueAmount
+              }
+            >
+              {money(subscription)}
+            </AppText>
+          </View>
+        </View>
+
         <View
           style={
             styles.revenueLegendItem
@@ -2922,7 +2994,7 @@ function RevenueBreakdown({
                 styles.revenueLabel
               }
             >
-              Milk
+              Milk Sales
             </AppText>
 
             <AppText
@@ -3766,6 +3838,12 @@ const styles = StyleSheet.create({
       "#EDF1EC",
   },
 
+  revenueSubscription: {
+    height: "100%",
+    backgroundColor:
+      UI.teal,
+  },
+
   revenueMilk: {
     height: "100%",
     backgroundColor:
@@ -3784,6 +3862,11 @@ const styles = StyleSheet.create({
     justifyContent:
       "space-between",
     marginTop: 14,
+  },
+
+  revenueLegendWrap: {
+    flexWrap: "wrap",
+    gap: 14,
   },
 
   revenueLegendItem: {
