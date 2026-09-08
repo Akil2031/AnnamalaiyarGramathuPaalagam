@@ -63,7 +63,9 @@ export default function AppShell() {
       case "Expenses": return <ExpensesScreen />;
       case "OtherBrands": return <OtherBrandProductsScreen />;
       case "Dashboard":
-      default: return <DashboardScreen />;
+      default: return<DashboardScreen
+  onNavigate={(screen) => setActiveScreen(screen)}
+/>;
     }
   };
 
